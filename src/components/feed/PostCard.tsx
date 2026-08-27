@@ -1,22 +1,47 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { MessageCircle, Repeat2, Heart, Bookmark, MoreHorizontal, BadgeCheck } from 'lucide-react-native';
 import { useTheme } from '~/hooks/useTheme';
 import { Post } from '~/types';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { TokenCard } from './TokenCard';
+import { useLikeMutation, useBookmarkMutation, useRepostMutation } from '~/queries/post/postQueries';
+
+const { width } = Dimensions.get('window');
 
 interface PostCardProps {
   post: Post;
   onPress?: () => void;
-  onLike?: () => void;
-  onRepost?: () => void;
   onReply?: () => void;
 }
 
-export function PostCard({ post, onPress, onLike, onRepost, onReply }: PostCardProps) {
+export function PostCard({ post, onPress, onReply }: PostCardProps) {
   const { theme } = useTheme();
+  
+  const likeMutation = useLikeMutation(post.id);
+  const bookmarkMutation = useBookmarkMutation(post.id);
+  const repostMutation = useRepostMutation(post.id);
+
+  const handleLike = () => {
+    likeMutation.mutate();
+  };
+
+  const handleBookmark = () => {
+    bookmarkMutation.mutate();
+  };
+
+  const handleRepost = () => {
+    repostMutation.mutate();
+  };
+
+  // Basic time formatting (e.g., "2h", "1d")
+  const formatTime = (dateStr: string) => {
+    const diff = new Date().getTime() - new Date(dateStr).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) return 'now';
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  };
 
   return (
     <TouchableOpacity 
@@ -25,8 +50,8 @@ export function PostCard({ post, onPress, onLike, onRepost, onReply }: PostCardP
       activeOpacity={0.8}
     >
       <View style={styles.avatarContainer}>
-        {post.author.avatarUrl ? (
-          <Image source={{ uri: post.author.avatarUrl }} style={styles.avatar} />
+        {post.author.profileImage ? (
+          <Image source={{ uri: post.author.profileImage }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
         )}
@@ -34,38 +59,50 @@ export function PostCard({ post, onPress, onLike, onRepost, onReply }: PostCardP
       <View style={styles.contentContainer}>
         <View style={styles.header}>
           <View style={styles.authorInfo}>
-            <Text style={[styles.displayName, { color: theme.textPrimary }]}>{post.author.displayName}</Text>
+            <Text style={[styles.displayName, { color: theme.textPrimary }]}>{post.author.fullName}</Text>
             {post.author.isVerified && <BadgeCheck size={16} color={theme.primary} style={styles.verified} />}
             <Text style={[styles.username, { color: theme.textSecondary }]}>@{post.author.username}</Text>
             <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
-            <Text style={[styles.timestamp, { color: theme.textSecondary }]}>2h</Text>
+            <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(post.createdAt)}</Text>
           </View>
           <TouchableOpacity hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
             <MoreHorizontal size={20} color={theme.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.text, { color: theme.textPrimary }]}>{post.text}</Text>
+        <Text style={[styles.text, { color: theme.textPrimary }]}>{post.content}</Text>
 
-        {post.tokenReferences?.map((token, index) => (
-          <TokenCard key={index} token={token} />
-        ))}
+        {post.media && post.media.length > 0 && (
+          <View style={styles.mediaContainer}>
+            <Image 
+              source={{ uri: post.media[0] }} 
+              style={[styles.mediaImage, { borderColor: theme.border }]} 
+              resizeMode="cover" 
+            />
+          </View>
+        )}
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionButton} onPress={onReply}>
             <MessageCircle size={18} color={theme.textSecondary} />
-            <Text style={[styles.actionText, { color: theme.textSecondary }]}>{post.replyCount || ''}</Text>
+            <Text style={[styles.actionText, { color: theme.textSecondary }]}>
+              {post.commentCount > 0 ? post.commentCount : ''}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={onRepost}>
-            <Repeat2 size={18} color={post.repostedByMe ? theme.success : theme.textSecondary} />
-            <Text style={[styles.actionText, { color: post.repostedByMe ? theme.success : theme.textSecondary }]}>{post.repostCount || ''}</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={handleRepost}>
+            <Repeat2 size={18} color={theme.textSecondary} />
+            <Text style={[styles.actionText, { color: theme.textSecondary }]}>
+              {post.repostCount > 0 ? post.repostCount : ''}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={onLike}>
-            <Heart size={18} color={post.likedByMe ? theme.danger : theme.textSecondary} />
-            <Text style={[styles.actionText, { color: post.likedByMe ? theme.danger : theme.textSecondary }]}>{post.likeCount || ''}</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+            <Heart size={18} color={post.hasLiked ? theme.danger : theme.textSecondary} />
+            <Text style={[styles.actionText, { color: post.hasLiked ? theme.danger : theme.textSecondary }]}>
+              {post.likeCount > 0 ? post.likeCount : ''}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Bookmark size={18} color={post.bookmarkedByMe ? theme.primary : theme.textSecondary} />
+          <TouchableOpacity style={styles.actionButton} onPress={handleBookmark}>
+            <Bookmark size={18} color={post.hasBookmarked ? theme.primary : theme.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -127,6 +164,16 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     lineHeight: 22,
     marginBottom: spacing.sm,
+  },
+  mediaContainer: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  mediaImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   actions: {
     flexDirection: 'row',

@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MainTabNavigator } from './MainTabNavigator';
 import { AuthNavigator } from './AuthNavigator';
 import { IntroScreen } from '~/components/intro/IntroScreen';
+import { ComposePostScreen } from '~/screens/feed/ComposePostScreen';
+import { PostDetailScreen } from '~/screens/feed/PostDetailScreen';
 import { useAppStore } from '~/store/appStore';
 import { useAuthStore } from '~/store/authStore';
 import { useTheme } from '~/hooks/useTheme';
@@ -12,6 +14,8 @@ export type RootStackParamList = {
   Intro: undefined;
   AuthStack: undefined;
   MainTabs: undefined;
+  ComposePost: undefined;
+  PostDetail: { postId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -42,7 +46,17 @@ export function RootNavigator() {
       ) : !isAuthenticated ? (
         <Stack.Screen name="AuthStack" component={AuthNavigator} />
       ) : (
-        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+        <>
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+          
+          <Stack.Group screenOptions={{ presentation: 'modal', animation: 'slide_from_bottom' }}>
+            <Stack.Screen name="ComposePost" component={ComposePostScreen} />
+          </Stack.Group>
+          
+          <Stack.Group screenOptions={{ animation: 'slide_from_right' }}>
+            <Stack.Screen name="PostDetail" component={PostDetailScreen} />
+          </Stack.Group>
+        </>
       )}
     </Stack.Navigator>
   );

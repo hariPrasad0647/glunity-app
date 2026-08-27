@@ -1,36 +1,39 @@
 export interface User {
   id: string;
   username: string;
-  displayName: string;
-  avatarUrl?: string;
+  fullName: string;
+  profileImage: string | null;
   isVerified?: boolean;
-}
-
-export interface TokenReference {
-  symbol: string;
-  price: number;
-  priceChange24h: number;
-}
-
-export interface Media {
-  id: string;
-  url: string;
-  type: 'image' | 'video';
 }
 
 export interface Post {
   id: string;
+  content: string;
+  isPrivate: boolean;
+  createdAt: string;
   author: User;
+  media: string[];
+  hashtags: string[];
+  mentions: Array<{
+    id: string;
+    username: string;
+    profileImage: string | null;
+  }>;
+  likeCount: number;
+  bookmarkCount: number;
+  repostCount: number;
+  commentCount: number;
+  hasLiked: boolean;
+  hasBookmarked: boolean;
+}
+
+export interface Reply {
+  id: string;
   text: string;
-  media?: Media[];
+  author: User;
   createdAt: string;
   likeCount: number;
+  hasLiked: boolean;
   replyCount: number;
-  repostCount: number;
-  bookmarkCount?: number;
-  likedByMe: boolean;
-  repostedByMe: boolean;
-  bookmarkedByMe: boolean;
-  quotedPost?: Post;
-  tokenReferences?: TokenReference[];
 }
+
