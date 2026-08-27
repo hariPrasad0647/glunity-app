@@ -13,9 +13,10 @@ interface PostCardProps {
   post: Post;
   onPress?: () => void;
   onReply?: () => void;
+  onProfilePress?: () => void;
 }
 
-export function PostCard({ post, onPress, onReply }: PostCardProps) {
+export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardProps) {
   const { theme } = useTheme();
   
   const likeMutation = useLikeMutation(post.id);
@@ -49,22 +50,22 @@ export function PostCard({ post, onPress, onReply }: PostCardProps) {
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <View style={styles.avatarContainer}>
+      <TouchableOpacity style={styles.avatarContainer} onPress={onProfilePress}>
         {post.author.profileImage ? (
           <Image source={{ uri: post.author.profileImage }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
         )}
-      </View>
+      </TouchableOpacity>
       <View style={styles.contentContainer}>
         <View style={styles.header}>
-          <View style={styles.authorInfo}>
+          <TouchableOpacity style={styles.authorInfo} onPress={onProfilePress}>
             <Text style={[styles.displayName, { color: theme.textPrimary }]}>{post.author.fullName}</Text>
             {post.author.isVerified && <BadgeCheck size={16} color={theme.primary} style={styles.verified} />}
             <Text style={[styles.username, { color: theme.textSecondary }]}>@{post.author.username}</Text>
             <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
             <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(post.createdAt)}</Text>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
             <MoreHorizontal size={20} color={theme.textSecondary} />
           </TouchableOpacity>

@@ -14,9 +14,10 @@ interface ReplyCardProps {
   reply: Reply;
   onReplyPress: (replyId: string, authorName: string) => void;
   isNested?: boolean;
+  onProfilePress?: () => void;
 }
 
-export function ReplyCard({ postId, reply, onReplyPress, isNested = false }: ReplyCardProps) {
+export function ReplyCard({ postId, reply, onReplyPress, isNested = false, onProfilePress }: ReplyCardProps) {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   
@@ -61,21 +62,21 @@ export function ReplyCard({ postId, reply, onReplyPress, isNested = false }: Rep
         isNested && styles.nestedContainer
       ]}
     >
-      <View style={styles.avatarContainer}>
+      <TouchableOpacity style={styles.avatarContainer} onPress={onProfilePress}>
         {reply.author.profileImage ? (
           <Image source={{ uri: reply.author.profileImage }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
         )}
-      </View>
+      </TouchableOpacity>
       <View style={styles.contentContainer}>
         <View style={styles.header}>
-          <View style={styles.authorInfo}>
+          <TouchableOpacity style={styles.authorInfo} onPress={onProfilePress}>
             <Text style={[styles.displayName, { color: theme.textPrimary }]}>{reply.author.fullName}</Text>
             <Text style={[styles.username, { color: theme.textSecondary }]}>@{reply.author.username}</Text>
             <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
             <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(reply.createdAt)}</Text>
-          </View>
+          </TouchableOpacity>
           {isAuthor ? (
             <TouchableOpacity hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }} onPress={handleDelete}>
               <Trash2 size={16} color={theme.textSecondary} />

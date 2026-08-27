@@ -41,6 +41,10 @@ export function PostDetailScreen({ route, navigation }: Props) {
     inputRef.current?.focus();
   };
 
+  const handleProfilePress = (userId: string) => {
+    navigation.push('Profile', { userId });
+  };
+
   const handleSendReply = async () => {
     if (!replyText.trim()) return;
     try {
@@ -61,6 +65,7 @@ export function PostDetailScreen({ route, navigation }: Props) {
       postId={postId} 
       reply={item} 
       onReplyPress={handleReplyPress}
+      onProfilePress={() => handleProfilePress(item.author.id)}
     />
   );
 
@@ -101,7 +106,7 @@ export function PostDetailScreen({ route, navigation }: Props) {
         <FlatList
           data={replies}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={() => <PostCard post={post} />}
+          ListHeaderComponent={() => <PostCard post={post} onProfilePress={() => handleProfilePress(post.author.id)} />}
           renderItem={renderReply}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
