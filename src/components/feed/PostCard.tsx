@@ -46,7 +46,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
 
   return (
     <TouchableOpacity 
-      style={[styles.container, { borderBottomColor: theme.border }]} 
+      style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]} 
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -60,11 +60,15 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
       <View style={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.authorInfo} onPress={onProfilePress}>
-            <Text style={[styles.displayName, { color: theme.textPrimary }]}>{post.author.fullName}</Text>
-            {post.author.isVerified && <BadgeCheck size={16} color={theme.primary} style={styles.verified} />}
-            <Text style={[styles.username, { color: theme.textSecondary }]}>@{post.author.username}</Text>
-            <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
-            <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(post.createdAt)}</Text>
+            <View style={styles.nameRow}>
+              <Text style={[styles.displayName, { color: theme.textPrimary }]}>{post.author.fullName}</Text>
+              {post.author.isVerified && <BadgeCheck size={16} color={theme.primary} style={styles.verified} />}
+            </View>
+            <View style={styles.handleRow}>
+              <Text style={[styles.username, { color: theme.textSecondary }]}>@{post.author.username}</Text>
+              <Text style={[styles.dot, { color: theme.textSecondary }]}> · </Text>
+              <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(post.createdAt)}</Text>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
             <MoreHorizontal size={20} color={theme.textSecondary} />
@@ -84,6 +88,12 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
         )}
 
         <View style={styles.actions}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+            <Heart size={18} color={post.hasLiked ? theme.danger : theme.textSecondary} />
+            <Text style={[styles.actionText, { color: post.hasLiked ? theme.danger : theme.textSecondary }]}>
+              {post.likeCount > 0 ? post.likeCount : ''}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={onReply}>
             <MessageCircle size={18} color={theme.textSecondary} />
             <Text style={[styles.actionText, { color: theme.textSecondary }]}>
@@ -94,12 +104,6 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
             <Repeat2 size={18} color={theme.textSecondary} />
             <Text style={[styles.actionText, { color: theme.textSecondary }]}>
               {post.repostCount > 0 ? post.repostCount : ''}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-            <Heart size={18} color={post.hasLiked ? theme.danger : theme.textSecondary} />
-            <Text style={[styles.actionText, { color: post.hasLiked ? theme.danger : theme.textSecondary }]}>
-              {post.likeCount > 0 ? post.likeCount : ''}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={handleBookmark}>
@@ -115,7 +119,10 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     padding: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: 12,
+    marginVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   avatarContainer: {
     marginRight: spacing.md,
@@ -136,38 +143,44 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   authorInfo: {
+    flex: 1,
+  },
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: 4,
+  },
+  handleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
   },
   displayName: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
   },
-  verified: {
-    marginLeft: 4,
-  },
   username: {
     fontSize: typography.sizes.sm,
-    marginLeft: 4,
   },
   dot: {
-    marginHorizontal: 4,
+    fontSize: typography.sizes.sm,
   },
   timestamp: {
     fontSize: typography.sizes.sm,
   },
+  verified: {
+    marginLeft: 2,
+  },
   text: {
     fontSize: typography.sizes.md,
     lineHeight: 22,
-    marginBottom: spacing.sm,
   },
   mediaContainer: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
   mediaImage: {
@@ -179,15 +192,17 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
-    paddingRight: spacing.xl,
+    marginTop: spacing.md,
+    paddingRight: spacing.lg,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   actionText: {
-    marginLeft: 6,
     fontSize: typography.sizes.sm,
   },
 });
+
+// force reload

@@ -2,13 +2,20 @@ import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '~/api/client';
 import { User } from '~/store/authStore';
 
-export interface AuthResponse {
+export interface BaseResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  errors?: any;
+}
+
+export interface AuthData {
   user: User;
   accessToken: string;
   refreshToken: string;
 }
 
-export interface EmailResponse {
+export interface EmailData {
   email: string;
 }
 
@@ -16,8 +23,8 @@ export interface EmailResponse {
 export const useSignupMutation = () => {
   return useMutation({
     mutationFn: async (data: { fullName: string; username: string; email: string; phone: string }) => {
-      const response = await apiClient.post<EmailResponse>('/api/auth/signup', data);
-      return response.data;
+      const response = await apiClient.post<BaseResponse<EmailData>>('/api/auth/signup', data);
+      return response.data.data; // Return the nested data
     },
   });
 };
@@ -26,8 +33,8 @@ export const useSignupMutation = () => {
 export const useResendSignupOTPMutation = () => {
   return useMutation({
     mutationFn: async (data: { email: string }) => {
-      const response = await apiClient.post<EmailResponse>('/api/auth/resend-otp', data);
-      return response.data;
+      const response = await apiClient.post<BaseResponse<EmailData>>('/api/auth/resend-otp', data);
+      return response.data.data;
     },
   });
 };
@@ -36,8 +43,8 @@ export const useResendSignupOTPMutation = () => {
 export const useVerifySignupOTPMutation = () => {
   return useMutation({
     mutationFn: async (data: { email: string; code: string }) => {
-      const response = await apiClient.post<AuthResponse>('/api/auth/verify-otp', data);
-      return response.data;
+      const response = await apiClient.post<BaseResponse<AuthData>>('/api/auth/verify-otp', data);
+      return response.data.data;
     },
   });
 };
@@ -46,8 +53,8 @@ export const useVerifySignupOTPMutation = () => {
 export const useLoginMutation = () => {
   return useMutation({
     mutationFn: async (data: { email: string }) => {
-      const response = await apiClient.post<EmailResponse>('/api/auth/login', data);
-      return response.data;
+      const response = await apiClient.post<BaseResponse<EmailData>>('/api/auth/login', data);
+      return response.data.data;
     },
   });
 };
@@ -56,8 +63,8 @@ export const useLoginMutation = () => {
 export const useVerifyLoginOTPMutation = () => {
   return useMutation({
     mutationFn: async (data: { email: string; code: string }) => {
-      const response = await apiClient.post<AuthResponse>('/api/auth/login/verify', data);
-      return response.data;
+      const response = await apiClient.post<BaseResponse<AuthData>>('/api/auth/login/verify', data);
+      return response.data.data;
     },
   });
 };
@@ -66,8 +73,8 @@ export const useVerifyLoginOTPMutation = () => {
 export const useGoogleAuthMutation = () => {
   return useMutation({
     mutationFn: async (data: { idToken: string }) => {
-      const response = await apiClient.post<AuthResponse>('/api/auth/google', data);
-      return response.data;
+      const response = await apiClient.post<BaseResponse<AuthData>>('/api/auth/google', data);
+      return response.data.data;
     },
   });
 };

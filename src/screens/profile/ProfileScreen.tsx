@@ -15,7 +15,9 @@ import {
   useUnfollowMutation 
 } from '~/queries/profile/profileQueries';
 import { useUserPostsQuery } from '~/queries/post/postQueries';
+import { Avatar } from '~/components/common/Avatar';
 import { Button } from '~/components/common/Button';
+import { useAuthStore } from '~/store/authStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -23,9 +25,11 @@ const { width } = Dimensions.get('window');
 
 export function ProfileScreen({ route, navigation }: Props) {
   const { theme } = useTheme();
-  // If no userId is passed, it means we are viewing our own profile
+  const currentUserId = useAuthStore(state => state.user?.id);
+  
+  // If no userId is passed, or if it matches the current user's ID
   const userId = route.params?.userId;
-  const isOwnProfile = !userId;
+  const isOwnProfile = !userId || userId === currentUserId;
 
   const myProfileQuery = useMyProfileQuery();
   const userProfileQuery = useUserProfileQuery(userId as string);
@@ -76,11 +80,11 @@ export function ProfileScreen({ route, navigation }: Props) {
         
         <View style={styles.profileInfoContainer}>
           <View style={styles.topRow}>
-            {profile.profileImage ? (
-              <Image source={{ uri: profile.profileImage }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: theme.border }]} />
-            )}
+            <Avatar 
+              uri={profile.profileImage} 
+              size={72} 
+              style={{ borderWidth: 3, borderColor: theme.background }} 
+            />
             
             <View style={styles.actionRow}>
               {isOwnProfile ? (
@@ -91,13 +95,24 @@ export function ProfileScreen({ route, navigation }: Props) {
                   style={styles.editButton}
                 />
               ) : (
-                <Button 
-                  title={profile.followStatus === 'following' ? 'Following' : profile.followStatus === 'pending' ? 'Requested' : 'Follow'} 
-                  variant={profile.followStatus === 'none' ? 'primary' : 'outline'}
-                  onPress={handleFollowAction}
-                  loading={followMutation.isPending || unfollowMutation.isPending}
-                  style={styles.editButton}
-                />
+                <>
+                  <Button 
+                    title={profile.followStatus === 'following' ? 'Following' : profile.followStatus === 'pending' ? 'Requested' : 'Follow'} 
+                    variant={profile.followStatus === 'none' ? 'primary' : 'outline'}
+                    onPress={handleFollowAction}
+                    loading={followMutation.isPending || unfollowMutation.isPending}
+                    style={[styles.editButton, { flex: 1, marginRight: 8 }]}
+                  />
+                  <Button 
+                    title="Message" 
+                    variant="outline"
+                    onPress={() => navigation.navigate('ChatRoom', { 
+                      recipientId: profile.id, 
+                      recipientUsername: profile.username 
+                    })}
+                    style={[styles.editButton, { flex: 1 }]}
+                  />
+                </>
               )}
             </View>
           </View>
@@ -177,11 +192,20 @@ export function ProfileScreen({ route, navigation }: Props) {
           <ChevronLeft size={24} color={theme.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: theme.textPrimary }]}>{profile.fullName}</Text>
-        <View style={styles.iconBtn}>
+        <View style={styles.headerActions}>
           {isOwnProfile ? (
-            <Settings size={20} color={theme.textPrimary} />
+            <>
+              <TouchableOpacity onPress={() => navigation.navigate('FollowRequests')} style={styles.actionIcon}>
+                <Users size={20} color={theme.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.actionIcon}>
+                <Settings size={20} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </>
           ) : (
-            <MoreHorizontal size={20} color={theme.textPrimary} />
+            <TouchableOpacity style={styles.actionIcon}>
+              <MoreHorizontal size={20} color={theme.textPrimary} />
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -237,6 +261,13 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionIcon: {
+    padding: 8,
+  },
   headerContainer: {
     paddingBottom: spacing.md,
   },
@@ -274,6 +305,7 @@ const styles = StyleSheet.create({
   },
   editButton: {
     height: 32,
+    paddingVertical: 0,
     paddingHorizontal: 16,
     borderRadius: 16,
     minWidth: 100,

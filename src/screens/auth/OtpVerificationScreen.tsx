@@ -52,7 +52,20 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
     try {
       let response;
       if (flow === 'login') {
-        response = await verifyLoginOTP.mutateAsync({ email, code: otp });
+        try {
+          response = await verifyLoginOTP.mutateAsync({ email, code: otp });
+        } catch (loginErr: any) {
+          // If the user's account is unverified, the backend might have sent a signup verification code 
+          // instead of a login code. If we get this specific error, fallback to the signup verification endpoint.
+          if (
+            loginErr.response?.status === 400 && 
+            loginErr.response?.data?.message?.toLowerCase().includes('no active login code found')
+          ) {
+            response = await verifySignupOTP.mutateAsync({ email, code: otp });
+          } else {
+            throw loginErr;
+          }
+        }
       } else {
         response = await verifySignupOTP.mutateAsync({ email, code: otp });
       }
@@ -63,7 +76,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
       // reacting to isAuthenticated state change.
     } catch (err: any) {
       if (err.response?.status === 400) {
-        setError('Invalid verification code.');
+        setError(err.response?.data?.message || 'Invalid verification code.');
       } else if (err.response?.status === 404) {
         setError('No account found with this email.');
       } else {

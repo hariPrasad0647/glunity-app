@@ -15,6 +15,12 @@ import { useAuthStore } from '~/store/authStore';
 import { useTheme } from '~/hooks/useTheme';
 import { UserProfile } from '~/queries/profile/profileQueries';
 
+import { InterestsScreen } from '~/screens/profile/InterestsScreen';
+import { FollowRequestsScreen } from '~/screens/profile/FollowRequestsScreen';
+import { ChatListScreen } from '~/screens/chat/ChatListScreen';
+import { ChatRoomScreen } from '~/screens/chat/ChatRoomScreen';
+import { SettingsScreen } from '~/screens/profile/SettingsScreen';
+
 export type RootStackParamList = {
   Intro: undefined;
   AuthStack: undefined;
@@ -23,8 +29,13 @@ export type RootStackParamList = {
   PostDetail: { postId: string };
   Profile: { userId?: string };
   EditProfile: { profile: UserProfile };
+  Interests: undefined;
   FollowList: { userId: string; initialTab?: 'Followers' | 'Following' };
+  FollowRequests: undefined;
   Search: undefined;
+  ChatList: undefined;
+  ChatRoom: { conversationId?: string; recipientId?: string; recipientUsername?: string };
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -61,13 +72,18 @@ export function RootNavigator() {
           <Stack.Group screenOptions={{ presentation: 'modal', animation: 'slide_from_bottom' }}>
             <Stack.Screen name="ComposePost" component={ComposePostScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="Interests" component={InterestsScreen} />
           </Stack.Group>
           
           <Stack.Group screenOptions={{ animation: 'slide_from_right' }}>
             <Stack.Screen name="PostDetail" component={PostDetailScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="FollowList" component={FollowListScreen} />
+            <Stack.Screen name="FollowRequests" component={FollowRequestsScreen} />
             <Stack.Screen name="Search" component={SearchScreen} />
+            <Stack.Screen name="ChatList" component={ChatListScreen} />
+            <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
           </Stack.Group>
         </>
       )}

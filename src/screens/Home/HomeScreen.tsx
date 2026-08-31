@@ -1,11 +1,14 @@
-import React, { useCallback } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Text, Image } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Text, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PostCard } from '~/components/feed/PostCard';
+import { Avatar } from '~/components/common/Avatar';
 import { useTheme } from '~/hooks/useTheme';
-import { Plus, Search } from 'lucide-react-native';
+import { Plus, Search, MessageCircle, Globe, Bell } from 'lucide-react-native';
 import { useFeedQuery } from '~/queries/post/postQueries';
 import { useMyProfileQuery } from '~/queries/profile/profileQueries';
+import { useConversationsQuery } from '../../queries/chat/chatQueries';
+import { useAuthStore } from '../../store/authStore';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 
@@ -13,8 +16,21 @@ type Props = any;
 
 export function HomeScreen({ navigation }: Props) {
   const { theme } = useTheme();
+  const currentUserId = useAuthStore(state => state.user?.id);
+  const [activeTab, setActiveTab] = React.useState('Feed');
   
   const { data: profile } = useMyProfileQuery();
+  const { data: conversations } = useConversationsQuery();
+
+  const unreadCount = useMemo(() => {
+    if (!conversations || !currentUserId) return 0;
+    return conversations.filter(c => {
+      if (!c.lastMessage) return false;
+      if (c.lastMessage.senderId === currentUserId) return false;
+      if (!c.lastReadAt) return true;
+      return new Date(c.lastMessage.createdAt) > new Date(c.lastReadAt);
+    }).length;
+  }, [conversations, currentUserId]);
 
   const { 
     data, 
@@ -31,24 +47,85 @@ export function HomeScreen({ navigation }: Props) {
     refetch();
   }, [refetch]);
 
-  const posts = data?.pages.flatMap(page => page.data.items) || [];
+  const rawPosts = data?.pages.flatMap(page => page.data.feed || []) || [];
+  const posts = useMemo(() => {
+    let filtered = [...rawPosts];
+    if (activeTab === 'Following') {
+      // In a real app, this might be a backend query or filter by follow status. 
+      // For now, we'll just show the feed or keep it simple.
+      // filtered = filtered.filter(p => isFollowing(p.author.id));
+    }
+    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [rawPosts, activeTab]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       
       {/* Custom Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-          {profile?.profileImage ? (
-            <Image source={{ uri: profile.profileImage }} style={styles.headerAvatar} />
-          ) : (
-            <View style={[styles.headerAvatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
-          )}
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Glunity</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Search')}>
-          <Search size={24} color={theme.textPrimary} />
-        </TouchableOpacity>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Globe size={32} color={theme.primary} />
+          <View style={styles.headerTextContainer}>
+            <Text style={[styles.headerTitle, { color: theme.primary }]}>Glunity</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Feed, Community & Chat</Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => navigation.navigate('Search')} style={styles.iconBtn}>
+            <Search size={24} color={theme.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('ChatList')} style={styles.iconBtn}>
+            <Bell size={24} color={theme.primary} />
+            {unreadCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: theme.danger }]}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: currentUserId })} style={styles.iconBtn}>
+            {profile?.profileImage ? (
+              <Image source={{ uri: profile.profileImage }} style={{ width: 28, height: 28, borderRadius: 14 }} />
+            ) : (
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: theme.surfaceSecondary, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: theme.textSecondary, fontWeight: 'bold', fontSize: 12 }}>
+                  {profile?.fullName?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Category Tabs */}
+      <View style={[styles.tabsContainer, { borderBottomColor: theme.border }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+          <TouchableOpacity 
+            style={[styles.tab, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }, activeTab === 'Feed' && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+            onPress={() => setActiveTab('Feed')}
+          >
+            <Text style={[styles.tabText, { color: theme.textSecondary }, activeTab === 'Feed' && { color: '#FFFFFF', fontWeight: 'bold' }]}>Feed</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }, activeTab === 'Following' && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+            onPress={() => setActiveTab('Following')}
+          >
+            <Text style={[styles.tabText, { color: theme.textSecondary }, activeTab === 'Following' && { color: '#FFFFFF', fontWeight: 'bold' }]}>Following</Text>
+            {activeTab !== 'Following' && <View style={[styles.blueDot, { backgroundColor: theme.primary }]} />}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }, activeTab === 'Trending' && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+            onPress={() => setActiveTab('Trending')}
+          >
+            <Text style={[styles.tabText, { color: theme.textSecondary }, activeTab === 'Trending' && { color: '#FFFFFF', fontWeight: 'bold' }]}>Trending</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
+            onPress={() => navigation.navigate('ChatList')}
+          >
+            <Text style={[styles.tabText, { color: theme.textSecondary }]}>Chat</Text>
+            <View style={[styles.blueDot, { backgroundColor: theme.primary }]} />
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       {isLoading && !isRefetching ? (
@@ -93,7 +170,7 @@ export function HomeScreen({ navigation }: Props) {
       )}
 
       <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: theme.primary }]}
+        style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 }]}
         onPress={() => navigation.navigate('ComposePost')}
         activeOpacity={0.9}
       >
@@ -113,21 +190,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  headerAvatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  headerTextContainer: {
+    flexDirection: 'column',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: typography.weights.bold,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  tabsContainer: {
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  tabsScroll: {
+    paddingHorizontal: spacing.md,
+    gap: 12,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  activeTab: {
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  activeTabText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  blueDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  iconBtn: {
+    padding: 8,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   center: {
     flex: 1,

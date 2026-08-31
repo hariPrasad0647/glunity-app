@@ -8,6 +8,7 @@ import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 import { ChevronLeft } from 'lucide-react-native';
 import { useFollowersQuery, useFollowingQuery, BasicUser } from '~/queries/profile/profileQueries';
+import { Avatar } from '~/components/common/Avatar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FollowList'>;
 
@@ -28,11 +29,7 @@ export function FollowListScreen({ route, navigation }: Props) {
       onPress={() => navigation.push('Profile', { userId: item.id })}
     >
       <View style={styles.avatarContainer}>
-        {item.profileImage ? (
-          <Image source={{ uri: item.profileImage }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
-        )}
+        <Avatar uri={item.profileImage} size={48} />
       </View>
       <View style={styles.userInfo}>
         <Text style={[styles.fullName, { color: theme.textPrimary }]}>{item.fullName}</Text>

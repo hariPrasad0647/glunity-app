@@ -1,5 +1,7 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Platform } from 'react-native';
 import { apiClient } from '~/api/client';
+import { useAuthStore } from '~/store/authStore';
 import { Post, Reply } from '~/types';
 
 // ==========================================
@@ -10,8 +12,8 @@ export interface FeedResponse {
   success: boolean;
   message: string;
   data: {
-    items: Post[]; // Handling reels generically as posts for now based on UI requirements
-    total: number;
+    feed: Post[];
+    hasMore: boolean;
     page: number;
     limit: number;
   };
@@ -22,14 +24,36 @@ export const useFeedQuery = () => {
     queryKey: ['feed'],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
-      const { data } = await apiClient.get<FeedResponse>('/api/feed', {
+      // The backend strictly separates user posts (Page 1) and friend posts (Page 2+)
+      // To create a true chronological mixed feed on initial load, we fetch both concurrently.
+      if (pageParam === 1) {
+        const [res1, res2] = await Promise.all([
+          apiClient.get<FeedResponse>('/api/feed/home', { params: { page: 1, limit: 10 } }),
+          apiClient.get<FeedResponse>('/api/feed/home', { params: { page: 2, limit: 10 } })
+        ]);
+        
+        const feed1 = res1.data.data.feed || [];
+        const feed2 = res2.data.data.feed || [];
+        
+        return {
+          success: true,
+          message: "Combined initial feed",
+          data: {
+            feed: [...feed1, ...feed2],
+            hasMore: res2.data.data.hasMore,
+            page: 2, // We've effectively consumed page 2
+            limit: res2.data.data.limit
+          }
+        } as FeedResponse;
+      }
+      
+      const { data } = await apiClient.get<FeedResponse>('/api/feed/home', {
         params: { page: pageParam, limit: 10 },
       });
       return data;
     },
     getNextPageParam: (lastPage) => {
-      const maxPages = Math.ceil(lastPage.data.total / lastPage.data.limit);
-      return lastPage.data.page < maxPages ? lastPage.data.page + 1 : undefined;
+      return lastPage.data.hasMore ? lastPage.data.page + 1 : undefined;
     },
   });
 };
@@ -92,21 +116,44 @@ export const useCreatePostMutation = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (content: string) => {
-      // Using FormData as requested by the contract
+    mutationFn: async ({ content, images }: { content: string, images?: string[] }) => {
       const formData = new FormData();
       formData.append('content', content);
       
-      const { data } = await apiClient.post<{ data: Post }>('/api/posts', formData, {
+      if (images && images.length > 0) {
+        images.forEach((uri, index) => {
+          const filename = uri.split('/').pop() || `image_${index}.jpg`;
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : `image/jpeg`;
+          
+          formData.append('images', {
+            uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+            name: filename,
+            type,
+          } as any);
+        });
+      }
+      
+      const token = useAuthStore.getState().accessToken;
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://glunity.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/posts`, {
+        method: 'POST',
         headers: {
-          // Axios automatically sets multipart boundary if Content-Type is undefined for FormData
-          'Content-Type': 'multipart/form-data', 
+          'Authorization': `Bearer ${token}`,
         },
+        body: formData,
       });
-      return data.data;
+      
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.message || 'Failed to create post');
+      }
+      return json.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
     },
   });
 };
@@ -140,9 +187,9 @@ const updatePostInFeedCache = (queryClient: any, postId: string, updater: (post:
         ...page,
         data: {
           ...page.data,
-          items: page.data.items.map((item: Post) => 
+          feed: page.data.feed ? page.data.feed.map((item: Post) => 
             item.id === postId ? updater(item) : item
-          ),
+          ) : [],
         }
       })),
     };

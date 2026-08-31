@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, TouchableOpacityProps } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, TouchableOpacityProps, Platform } from 'react-native';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
@@ -9,10 +9,13 @@ interface ButtonProps extends TouchableOpacityProps {
   title: string;
   variant?: 'primary' | 'secondary' | 'outline';
   isLoading?: boolean;
+  loading?: boolean; // added because many files pass `loading` instead of `isLoading`
 }
 
-export function Button({ title, variant = 'primary', isLoading, style, disabled, ...props }: ButtonProps) {
+export function Button({ title, variant = 'primary', isLoading, loading, style, disabled, ...props }: ButtonProps) {
   const { theme } = useTheme();
+  
+  const isCurrentlyLoading = isLoading || loading;
 
   const getBackgroundColor = () => {
     if (disabled) return theme.surfaceSecondary;
@@ -46,11 +49,11 @@ export function Button({ title, variant = 'primary', isLoading, style, disabled,
         { backgroundColor: getBackgroundColor(), borderColor: getBorderColor(), borderWidth: variant === 'outline' ? 1 : 0 },
         style
       ]}
-      disabled={disabled || isLoading}
+      disabled={disabled || isCurrentlyLoading}
       activeOpacity={0.8}
       {...props}
     >
-      {isLoading ? (
+      {isCurrentlyLoading ? (
         <ActivityIndicator color={getTextColor()} />
       ) : (
         <Text style={[styles.text, { color: getTextColor() }]}>{title}</Text>
@@ -70,6 +73,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.bold,
   },
 });

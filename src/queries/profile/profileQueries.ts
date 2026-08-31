@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '~/api/client';
+import { useAuthStore } from '~/store/authStore';
 import { Post } from '~/types';
 
 export type FollowStatus = 'following' | 'pending' | 'none';
@@ -18,6 +19,7 @@ export interface UserProfile {
   followerCount: number;
   followingCount: number;
   followStatus: FollowStatus;
+  isMutual?: boolean;
   isOwnProfile: boolean;
   posts?: {
     items: Post[];
@@ -61,6 +63,16 @@ export const useUserProfileQuery = (userId: string) => {
   });
 };
 
+export const useGetInterestsQuery = () => {
+  return useQuery({
+    queryKey: ['myInterests'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: { interests: string[] } }>('/api/users/interests');
+      return data.data.interests;
+    },
+  });
+};
+
 export const useFollowersQuery = (userId: string) => {
   return useQuery({
     queryKey: ['followers', userId],
@@ -96,7 +108,7 @@ export const useUserSearchQuery = (query: string) => {
     queryKey: ['userSearch', query],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
-      const { data } = await apiClient.get<{ data: { items: BasicUser[]; total: number; page: number; limit: number } }>(
+      const { data } = await apiClient.get<{ data: { users: BasicUser[]; total: number; page: number; limit: number } }>(
         '/api/users/search',
         { params: { q: query, page: pageParam, limit: 20 } }
       );
@@ -119,10 +131,21 @@ export const useUpdateProfileMutation = () => {
   
   return useMutation({
     mutationFn: async (formData: FormData) => {
-      const { data } = await apiClient.patch<{ data: UserProfile }>('/api/users/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const token = useAuthStore.getState().accessToken;
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://glunity.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
       });
-      return data.data;
+      
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.message || 'Failed to update profile');
+      }
+      return json.data;
     },
     onSuccess: (updatedProfile) => {
       queryClient.setQueryData(['myProfile'], (old: any) => ({
@@ -130,6 +153,20 @@ export const useUpdateProfileMutation = () => {
         ...updatedProfile,
       }));
       // We might also want to invalidate to fetch fresh posts if needed, but the profile data is updated
+    },
+  });
+};
+
+export const useSaveInterestsMutation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (interests: string[]) => {
+      const { data } = await apiClient.post<{ data: { interests: string[] } }>('/api/users/interests', { interests });
+      return data.data.interests;
+    },
+    onSuccess: (updatedInterests) => {
+      queryClient.setQueryData(['myInterests'], updatedInterests);
     },
   });
 };

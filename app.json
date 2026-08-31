@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "test",
+    "name": "Glunity",
     "slug": "test",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +17,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.test"
+      "package": "com.anonymous.glunity"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -25,6 +25,11 @@
     "plugins": [
       "expo-secure-store",
       "@react-native-google-signin/google-signin"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "993e3232-00d1-4ba0-9006-b689f6d583c2"
+      }
+    }
   }
 }

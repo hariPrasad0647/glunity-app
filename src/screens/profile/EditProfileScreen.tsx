@@ -7,9 +7,10 @@ import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 import { ChevronLeft, Camera } from 'lucide-react-native';
-import { useUpdateProfileMutation, UserProfile } from '~/queries/profile/profileQueries';
+import { useUpdateProfileMutation, UserProfile, useGetInterestsQuery } from '~/queries/profile/profileQueries';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '~/components/common/Button';
+import { Avatar } from '~/components/common/Avatar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
@@ -25,6 +26,7 @@ export function EditProfileScreen({ route, navigation }: Props) {
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
 
   const updateMutation = useUpdateProfileMutation();
+  const { data: interestsData, isLoading: interestsLoading } = useGetInterestsQuery();
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -34,7 +36,7 @@ export function EditProfileScreen({ route, navigation }: Props) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
@@ -48,13 +50,16 @@ export function EditProfileScreen({ route, navigation }: Props) {
   const handleSave = async () => {
     try {
       const formData = new FormData();
-      if (fullName !== initialProfile.fullName) formData.append('fullName', fullName);
-      if (username !== initialProfile.username) formData.append('username', username);
-      if (bio !== initialProfile.bio) formData.append('bio', bio);
-      if (profession !== initialProfile.profession) formData.append('profession', profession);
-      if (isPrivate !== initialProfile.isPrivate) formData.append('isPrivate', String(isPrivate));
+      let hasChanges = false;
+      
+      if (fullName !== initialProfile.fullName) { formData.append('fullName', fullName); hasChanges = true; }
+      if (username !== initialProfile.username) { formData.append('username', username); hasChanges = true; }
+      if (bio !== initialProfile.bio && bio !== '') { formData.append('bio', bio); hasChanges = true; }
+      if (profession !== initialProfile.profession && profession !== '') { formData.append('profession', profession); hasChanges = true; }
+      if (isPrivate !== initialProfile.isPrivate) { formData.append('isPrivate', String(isPrivate)); hasChanges = true; }
 
       if (localImageUri) {
+        hasChanges = true;
         // Simple filename extraction for RN FormData
         const filename = localImageUri.split('/').pop() || 'profile.jpg';
         const match = /\.(\w+)$/.exec(filename);
@@ -67,11 +72,16 @@ export function EditProfileScreen({ route, navigation }: Props) {
         } as any);
       }
 
+      if (!hasChanges) {
+        navigation.goBack();
+        return;
+      }
+
       await updateMutation.mutateAsync(formData);
       navigation.goBack();
     } catch (e: any) {
       console.error(e);
-      Alert.alert('Update Failed', e?.response?.data?.message || 'Could not update profile');
+      Alert.alert('Update Failed', e?.response?.data?.message || e?.message || 'Could not update profile');
     }
   };
 
@@ -100,11 +110,7 @@ export function EditProfileScreen({ route, navigation }: Props) {
         <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={styles.avatarSection}>
             <TouchableOpacity onPress={handlePickImage} style={styles.avatarWrapper}>
-              {displayImage ? (
-                <Image source={{ uri: displayImage }} style={[styles.avatar, { borderColor: theme.border }]} />
-              ) : (
-                <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
-              )}
+              <Avatar uri={displayImage} size={96} style={{ borderColor: theme.border, borderWidth: 1 }} />
               <View style={[styles.cameraBadge, { backgroundColor: theme.primary }]}>
                 <Camera size={16} color="#fff" />
               </View>
@@ -158,6 +164,19 @@ export function EditProfileScreen({ route, navigation }: Props) {
             />
           </View>
 
+          <TouchableOpacity 
+            style={[styles.interestsGroup, { borderTopColor: theme.border, borderBottomColor: theme.border }]}
+            onPress={() => navigation.navigate('Interests')}
+          >
+            <View>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Interests</Text>
+              <Text style={[styles.input, { color: theme.textPrimary, borderBottomWidth: 0, paddingVertical: 4 }]}>
+                {interestsLoading ? 'Loading...' : (interestsData?.length ? `${interestsData.length} selected` : 'Select interests')}
+              </Text>
+            </View>
+            <ChevronLeft size={20} color={theme.textSecondary} style={{ transform: [{ rotate: '180deg' }] }} />
+          </TouchableOpacity>
+
           <View style={[styles.switchGroup, { borderTopColor: theme.border }]}>
             <View>
               <Text style={[styles.switchTitle, { color: theme.textPrimary }]}>Private Account</Text>
@@ -195,6 +214,7 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     height: 32,
+    paddingVertical: 0,
     paddingHorizontal: 16,
     borderRadius: 16,
   },
@@ -244,6 +264,16 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  interestsGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: spacing.lg,
   },
   switchGroup: {
     flexDirection: 'row',

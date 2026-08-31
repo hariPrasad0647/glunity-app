@@ -8,6 +8,7 @@ import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 import { Search, ChevronLeft } from 'lucide-react-native';
 import { useUserSearchQuery, BasicUser } from '~/queries/profile/profileQueries';
+import { Avatar } from '~/components/common/Avatar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Search'>;
 
@@ -26,7 +27,7 @@ export function SearchScreen({ navigation }: Props) {
 
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserSearchQuery(debouncedQuery);
 
-  const users = data?.pages.flatMap(page => page.items) || [];
+  const users = data?.pages.flatMap(page => page.users || []) || [];
 
   const renderUser = ({ item }: { item: BasicUser }) => (
     <TouchableOpacity 
@@ -34,11 +35,7 @@ export function SearchScreen({ navigation }: Props) {
       onPress={() => navigation.push('Profile', { userId: item.id })}
     >
       <View style={styles.avatarContainer}>
-        {item.profileImage ? (
-          <Image source={{ uri: item.profileImage }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
-        )}
+        <Avatar uri={item.profileImage} size={48} />
       </View>
       <View style={styles.userInfo}>
         <Text style={[styles.fullName, { color: theme.textPrimary }]}>{item.fullName}</Text>

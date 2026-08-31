@@ -49,7 +49,7 @@ export function ReplyCard({ postId, reply, onReplyPress, isNested = false, onPro
   };
 
   const nestedReplies = nestedData?.pages.flatMap(p => p.data.replies) || [];
-  const isAuthor = user?.id === reply.author.id;
+  const isAuthor = user?.id === reply.author?.id;
 
   return (
     <Animated.View 
@@ -62,8 +62,8 @@ export function ReplyCard({ postId, reply, onReplyPress, isNested = false, onPro
         isNested && styles.nestedContainer
       ]}
     >
-      <TouchableOpacity style={styles.avatarContainer} onPress={onProfilePress}>
-        {reply.author.profileImage ? (
+      <TouchableOpacity style={styles.avatarContainer} onPress={onProfilePress} disabled={!reply.author}>
+        {reply.author?.profileImage ? (
           <Image source={{ uri: reply.author.profileImage }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
@@ -71,10 +71,16 @@ export function ReplyCard({ postId, reply, onReplyPress, isNested = false, onPro
       </TouchableOpacity>
       <View style={styles.contentContainer}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.authorInfo} onPress={onProfilePress}>
-            <Text style={[styles.displayName, { color: theme.textPrimary }]}>{reply.author.fullName}</Text>
-            <Text style={[styles.username, { color: theme.textSecondary }]}>@{reply.author.username}</Text>
-            <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
+          <TouchableOpacity style={styles.authorInfo} onPress={onProfilePress} disabled={!reply.author}>
+            <Text style={[styles.displayName, { color: theme.textPrimary }]}>
+              {reply.author ? reply.author.fullName : 'Deleted User'}
+            </Text>
+            {reply.author && (
+              <>
+                <Text style={[styles.username, { color: theme.textSecondary }]}>@{reply.author.username}</Text>
+                <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
+              </>
+            )}
             <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(reply.createdAt)}</Text>
           </TouchableOpacity>
           {isAuthor ? (
@@ -92,7 +98,7 @@ export function ReplyCard({ postId, reply, onReplyPress, isNested = false, onPro
           {!isNested && (
             <TouchableOpacity 
               style={styles.actionButton} 
-              onPress={() => onReplyPress(reply.id, reply.author.username)}
+              onPress={() => onReplyPress(reply.id, reply.author?.username || 'Deleted User')}
             >
               <MessageCircle size={16} color={theme.textSecondary} />
               <Text style={[styles.actionText, { color: theme.textSecondary }]}>
