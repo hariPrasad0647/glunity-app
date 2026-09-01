@@ -112,6 +112,22 @@ export const usePostRepliesQuery = (postId: string) => {
 // MUTATIONS
 // ==========================================
 
+export const useDeletePostMutation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      const { data } = await apiClient.delete(`/api/posts/${postId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+    },
+  });
+};
+
 export const useCreatePostMutation = () => {
   const queryClient = useQueryClient();
   
@@ -169,6 +185,18 @@ export const useReplyMutation = (postId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['postReplies', postId] });
       queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      
+      const updater = (post: Post) => {
+        const currentCount = post.commentCount !== undefined ? post.commentCount : (post as any).replyCount || 0;
+        return {
+          ...post,
+          commentCount: currentCount + 1,
+          replyCount: currentCount + 1,
+        };
+      };
+      updatePostInFeedCache(queryClient, postId, updater);
     },
   });
 };
@@ -340,6 +368,18 @@ export const useDeleteReplyMutation = (postId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      
+      const updater = (post: Post) => {
+        const currentCount = post.commentCount !== undefined ? post.commentCount : (post as any).replyCount || 0;
+        return {
+          ...post,
+          commentCount: Math.max(0, currentCount - 1),
+          replyCount: Math.max(0, currentCount - 1),
+        };
+      };
+      updatePostInFeedCache(queryClient, postId, updater);
     },
   });
 };

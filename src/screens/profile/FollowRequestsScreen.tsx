@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     height: 32,
+    paddingVertical: 0,
     paddingHorizontal: 12,
     borderRadius: 16,
     marginLeft: 8,

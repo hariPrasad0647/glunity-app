@@ -64,7 +64,7 @@ export function ComposePostScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         style={styles.container}
       >
         <View style={[styles.header, { borderBottomColor: theme.border }]}>

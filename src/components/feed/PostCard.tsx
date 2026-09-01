@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
-import { MessageCircle, Repeat2, Heart, Bookmark, MoreHorizontal, BadgeCheck } from 'lucide-react-native';
+import { MessageCircle, Repeat2, Heart, Bookmark, MoreHorizontal, BadgeCheck, Trash2 } from 'lucide-react-native';
 import { useTheme } from '~/hooks/useTheme';
 import { Post } from '~/types';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { useLikeMutation, useBookmarkMutation, useRepostMutation } from '~/queries/post/postQueries';
+import { useLikeMutation, useBookmarkMutation, useRepostMutation, useDeletePostMutation } from '~/queries/post/postQueries';
+import { useAuthStore } from '~/store/authStore';
+import { ConfirmModal } from '~/components/common/ConfirmModal';
+import { OptionsModal, Option } from '~/components/common/OptionsModal';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +25,31 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
   const likeMutation = useLikeMutation(post.id);
   const bookmarkMutation = useBookmarkMutation(post.id);
   const repostMutation = useRepostMutation(post.id);
+  const deletePostMutation = useDeletePostMutation();
+  const currentUser = useAuthStore((state) => state.user);
+
+  const [optionsVisible, setOptionsVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+
+  const postOptions: Option[] = [
+    {
+      label: 'Delete Post',
+      icon: <Trash2 size={20} color={theme.danger} />,
+      isDestructive: true,
+      onPress: () => setDeleteConfirmVisible(true),
+    }
+  ];
+
+  const handleMoreOptions = () => {
+    if (currentUser?.id === post.author.id) {
+      setOptionsVisible(true);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    setDeleteConfirmVisible(false);
+    deletePostMutation.mutate(post.id);
+  };
 
   const handleLike = () => {
     likeMutation.mutate();
@@ -70,7 +98,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
               <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(post.createdAt)}</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <TouchableOpacity hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }} onPress={handleMoreOptions}>
             <MoreHorizontal size={20} color={theme.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -97,7 +125,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
           <TouchableOpacity style={styles.actionButton} onPress={onReply}>
             <MessageCircle size={18} color={theme.textSecondary} />
             <Text style={[styles.actionText, { color: theme.textSecondary }]}>
-              {post.commentCount > 0 ? post.commentCount : ''}
+              {(post.commentCount || (post as any).replyCount) > 0 ? (post.commentCount || (post as any).replyCount) : ''}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={handleRepost}>
@@ -111,6 +139,22 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
           </TouchableOpacity>
         </View>
       </View>
+
+      <OptionsModal 
+        visible={optionsVisible}
+        options={postOptions}
+        onClose={() => setOptionsVisible(false)}
+      />
+
+      <ConfirmModal
+        visible={deleteConfirmVisible}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmText="Delete"
+        isDestructive={true}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirmVisible(false)}
+      />
     </TouchableOpacity>
   );
 }

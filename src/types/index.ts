@@ -35,5 +35,31 @@ export interface Reply {
   likeCount: number;
   hasLiked: boolean;
   replyCount: number;
+  postId?: string;
+}
+
+export interface Reel {
+  id: string;
+  author: User;
+  videoUrl: string;
+  caption: string;
+  likeCount: number;
+  replyCount: number;
+  bookmarkCount: number;
+  hasLiked: boolean;
+  hasBookmarked: boolean;
+  createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  message: string;
+  data: {
+    [key: string]: T[];
+  } & {
+    total?: number;
+    page?: number;
+    limit?: number;
+  };
 }
 
