@@ -14,6 +14,7 @@ import { useAuthStore } from '~/store/authStore';
 import { useChatStore } from '~/store/chatStore';
 import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
+import Reanimated, { FadeInDown, Layout } from 'react-native-reanimated';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatRoom'>;
 
@@ -43,8 +44,9 @@ const MessageItem = memo(({ item, isOwn, theme, onAction, onReply, onScrollToMes
   }
 
   return (
-    <Swipeable
-      ref={swipeableRef}
+    <Reanimated.View entering={FadeInDown.springify().mass(0.5).damping(12)} layout={Layout.springify().damping(12)}>
+      <Swipeable
+        ref={swipeableRef}
       renderLeftActions={renderLeftActions}
       onSwipeableWillOpen={(direction) => {
         if (direction === 'left') {
@@ -99,6 +101,7 @@ const MessageItem = memo(({ item, isOwn, theme, onAction, onReply, onScrollToMes
         </Text>
       </TouchableOpacity>
     </Swipeable>
+    </Reanimated.View>
   );
 });
 
@@ -386,6 +389,10 @@ export function ChatRoomScreen({ route, navigation }: Props) {
       return { ...oldData, pages: newPages };
     });
 
+    setTimeout(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }, 100);
+
     try {
       let uploadedMedia: any[] = [];
       if (tempMessage.media.length > 0) {
@@ -589,16 +596,16 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 22,
     marginBottom: 8,
   },
   ownBubble: {
     alignSelf: 'flex-end',
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   otherBubble: {
     alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 6,
   },
   messageText: {
     fontSize: typography.sizes.md,
