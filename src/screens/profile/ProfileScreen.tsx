@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
@@ -65,6 +66,18 @@ export function ProfileScreen({ route, navigation }: Props) {
       player.play();
     }
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      // Refetch profile data to ensure it's fresh after navigating back from EditProfile
+      refetch();
+      
+      // Ensure video plays when screen comes into focus
+      if (profile?.bannerVideo) {
+        player.play();
+      }
+    }, [refetch, player, profile?.bannerVideo])
+  );
 
   const handleFollowAction = () => {
     if (!profile) return;

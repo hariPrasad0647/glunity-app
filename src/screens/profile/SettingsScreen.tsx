@@ -47,6 +47,13 @@ export function SettingsScreen({ navigation }: Props) {
 
         <TouchableOpacity 
           style={[styles.settingRow, { borderBottomColor: theme.border }]}
+          onPress={() => navigation.navigate('AirdropPoints')}
+        >
+          <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>Airdrop Points</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.settingRow, { borderBottomColor: theme.border }]}
           onPress={() => {
             logout();
           }}

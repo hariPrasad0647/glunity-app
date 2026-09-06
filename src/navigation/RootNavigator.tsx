@@ -21,6 +21,8 @@ import { ChatListScreen } from '~/screens/chat/ChatListScreen';
 import { ChatRoomScreen } from '~/screens/chat/ChatRoomScreen';
 import { SettingsScreen } from '~/screens/profile/SettingsScreen';
 import { UserActivityScreen } from '~/screens/profile/UserActivityScreen';
+import { AirdropPointsScreen } from '~/screens/points/AirdropPointsScreen';
+import { ReferralScreen } from '~/screens/referrals/ReferralScreen';
 
 export type RootStackParamList = {
   Intro: undefined;
@@ -38,6 +40,8 @@ export type RootStackParamList = {
   ChatRoom: { conversationId?: string; recipientId?: string; recipientUsername?: string };
   Settings: undefined;
   UserActivity: undefined;
+  AirdropPoints: undefined;
+  Referrals: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -87,6 +91,7 @@ export function RootNavigator() {
             <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="UserActivity" component={UserActivityScreen} />
+            <Stack.Screen name="AirdropPoints" component={AirdropPointsScreen} />
           </Stack.Group>
         </>
       )}

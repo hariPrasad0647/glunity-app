@@ -35,9 +35,7 @@ export function WelcomeScreen({ navigation }: Props) {
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image source={require('../../../assets/logo.png')} style={{ width: 380, height: 120, marginBottom: 8 }} resizeMode="contain" />
-          <Text style={[styles.subtitle, { color: theme.textSecondary, marginTop: 0 }]}>
-            Feed, Community & Chat
-          </Text>
+
         </View>
 
         <View style={styles.actionContainer}>

@@ -46,9 +46,11 @@ export function AnimatedTabItem({ isFocused, onPress, onLongPress, label, icon }
 
   const animatedLabelStyle = useAnimatedStyle(() => {
     return {
-      opacity: progress.value,
-      transform: [{ translateY: (1 - progress.value) * 5 }],
-      color: theme.primary, // The active color
+      color: interpolateColor(
+        progress.value,
+        [0, 1],
+        [theme.textSecondary, theme.primary]
+      ),
     };
   });
 
@@ -90,7 +92,6 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.medium,
     marginTop: 4,
-    position: 'absolute',
-    bottom: -16, // Hidden natively unless focused
   },
 });
+

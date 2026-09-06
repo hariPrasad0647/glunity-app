@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { ChevronLeft, Send, Image as ImageIcon, X, Reply } from 'lucide-react-native';
+import { ChevronLeft, Send, Image as ImageIcon, X, Reply, Trash2, CornerUpLeft } from 'lucide-react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { OptionsModal } from '~/components/common/OptionsModal';
 import { useChatMessagesQuery, ChatMessage, useDeleteMessageMutation, useConversationsQuery } from '~/queries/chat/chatQueries';
 import { useAuthStore } from '~/store/authStore';
 import { useChatStore } from '~/store/chatStore';
@@ -14,6 +16,91 @@ import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatRoom'>;
+
+const MessageItem = memo(({ item, isOwn, theme, onAction, onReply, onScrollToMessage, isHighlighted, currentUserId }: any) => {
+  const swipeableRef = useRef<Swipeable>(null);
+
+  const renderLeftActions = (progress: any, dragX: any) => {
+    const trans = dragX.interpolate({
+      inputRange: [0, 50, 100, 101],
+      outputRange: [-20, 0, 0, 1],
+    });
+    return (
+      <View style={styles.replyActionContainer}>
+        <Animated.View style={[styles.replyActionIcon, { transform: [{ translateX: trans }] }]}>
+          <Reply size={24} color={theme.textPrimary} />
+        </Animated.View>
+      </View>
+    );
+  };
+
+  if (item.isDeleted) {
+    return (
+      <View style={[styles.messageBubble, isOwn ? styles.ownBubble : styles.otherBubble, { backgroundColor: theme.surfaceSecondary }]}>
+        <Text style={[styles.messageText, { color: theme.textSecondary, fontStyle: 'italic' }]}>Message deleted</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderLeftActions={renderLeftActions}
+      onSwipeableWillOpen={(direction) => {
+        if (direction === 'left') {
+          swipeableRef.current?.close();
+          onReply(item);
+        }
+      }}
+      overshootLeft={false}
+      leftThreshold={50}
+    >
+      <TouchableOpacity 
+        onLongPress={() => onAction(item)}
+        activeOpacity={0.7}
+        style={[
+          styles.messageBubble, 
+          isOwn ? [styles.ownBubble, { backgroundColor: theme.primary }] : [styles.otherBubble, { backgroundColor: theme.surfaceSecondary }],
+          isHighlighted && { backgroundColor: theme.primary + '80' }
+        ]}
+      >
+        {item.replyTo && (
+          <TouchableOpacity 
+            activeOpacity={0.7} 
+            onPress={() => onScrollToMessage(item.replyTo.id)}
+            style={[styles.replyQuote, { borderLeftColor: isOwn ? 'rgba(255,255,255,0.5)' : theme.primary, backgroundColor: isOwn ? 'rgba(255,255,255,0.1)' : theme.background }]}
+          >
+            <Text style={[styles.replyQuoteUser, { color: isOwn ? 'rgba(255,255,255,0.9)' : theme.textPrimary }]}>
+              {item.replyTo.sender?.username || 'User'}
+            </Text>
+            {item.replyTo.content ? (
+              <Text numberOfLines={1} style={[styles.replyQuoteText, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
+                {item.replyTo.content}
+              </Text>
+            ) : item.replyTo.media && item.replyTo.media.length > 0 ? (
+              <Text style={[styles.replyQuoteText, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>[Media]</Text>
+            ) : null}
+          </TouchableOpacity>
+        )}
+        {item.media && item.media.length > 0 && (
+          <View style={styles.mediaContainer}>
+            {item.media.map((m: any) => (
+              <Image key={m.id} source={{ uri: m.mediaUrl }} style={styles.messageImage} />
+            ))}
+          </View>
+        )}
+        {item.content ? (
+          <Text style={[styles.messageText, { color: isOwn ? '#fff' : theme.textPrimary }]}>
+            {item.content}
+          </Text>
+        ) : null}
+        <Text style={[styles.timestamp, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
+          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+      </TouchableOpacity>
+    </Swipeable>
+  );
+});
 
 export function ChatRoomScreen({ route, navigation }: Props) {
   const { conversationId: routeConversationId, recipientId, recipientUsername } = route.params;
@@ -25,6 +112,18 @@ export function ChatRoomScreen({ route, navigation }: Props) {
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const inputRef = useRef<TextInput>(null);
+  const flatListRef = useRef<FlatList>(null);
+
+  const handleReply = useCallback((msg: ChatMessage) => {
+    setReplyingTo(msg);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  }, []);
   
   const { socket, connect, isConnected } = useChatStore();
   
@@ -63,7 +162,27 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     // The backend returns oldest -> newest within a batch.
     // For an inverted FlatList, we need newest at index 0.
     const allMessages = data.pages.flatMap(page => page);
-    return [...allMessages].reverse();
+    
+    const populated = allMessages.map(msg => {
+      if (msg.replyToId && !msg.replyTo) {
+        const quotedMsg = allMessages.find(m => m.id === msg.replyToId);
+        if (quotedMsg) {
+          return {
+            ...msg,
+            replyTo: {
+              id: quotedMsg.id,
+              content: quotedMsg.content,
+              isDeleted: quotedMsg.isDeleted,
+              sender: quotedMsg.sender || { id: quotedMsg.senderId, username: 'User', profileImage: null, fullName: '' },
+              media: quotedMsg.media,
+            }
+          };
+        }
+      }
+      return msg;
+    });
+
+    return [...populated].reverse();
   }, [data]);
 
   // Socket event listeners
@@ -90,8 +209,54 @@ export function ChatRoomScreen({ route, navigation }: Props) {
           const exists = oldData.pages.some((page: ChatMessage[]) => page.some(m => m.id === payload.message.id));
           if (exists) return oldData;
 
-          const newPages = [...oldData.pages];
-          newPages[0] = [...newPages[0], payload.message];
+          let finalMessage = { ...payload.message };
+          const allMessages = oldData.pages.flatMap((p: ChatMessage[]) => p);
+          let optimisticTempId: string | null = null;
+          
+          console.log('[DEBUG] Received chat:message via WS:', JSON.stringify(finalMessage, null, 2));
+
+          // Salvage replyTo metadata from the optimistic temp message if the backend drops it
+          const optimisticMatch = allMessages.find((m: ChatMessage) => 
+            m.id.startsWith('temp_') && 
+            m.senderId === finalMessage.senderId &&
+            (!m.content || !finalMessage.content || m.content.trim() === finalMessage.content.trim())
+          );
+
+          if (optimisticMatch) {
+             console.log('[DEBUG] Found optimistic match:', optimisticMatch.id);
+             optimisticTempId = optimisticMatch.id;
+             if (optimisticMatch.replyToId) {
+               finalMessage.replyToId = optimisticMatch.replyToId;
+               finalMessage.replyTo = optimisticMatch.replyTo;
+             }
+          } else {
+             console.log('[DEBUG] No optimistic match found for:', finalMessage.id);
+          }
+          
+          if (finalMessage.replyToId && !finalMessage.replyTo) {
+             const quotedMsg = allMessages.find((m: ChatMessage) => m.id === finalMessage.replyToId);
+             if (quotedMsg) {
+                finalMessage.replyTo = {
+                  id: quotedMsg.id,
+                  content: quotedMsg.content,
+                  isDeleted: quotedMsg.isDeleted,
+                  sender: quotedMsg.sender || { id: quotedMsg.senderId, username: 'User', profileImage: null, fullName: '' },
+                  media: quotedMsg.media,
+                };
+             }
+          }
+
+          const newPages = oldData.pages.map((page: ChatMessage[]) => {
+             if (optimisticTempId) {
+                return page.map((m: ChatMessage) => m.id === optimisticTempId ? finalMessage : m);
+             }
+             return page;
+          });
+
+          if (!optimisticTempId) {
+             newPages[0] = [...newPages[0], finalMessage];
+          }
+
           return { ...oldData, pages: newPages };
         });
 
@@ -234,16 +399,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
         replyToId: currentReplyToId,
       });
 
-      // Let's remove the temp message after 1 second assuming the real one arrived
-      setTimeout(() => {
-        queryClient.setQueryData(['chatMessages', targetConvId], (oldData: any) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            pages: oldData.pages.map((page: ChatMessage[]) => page.filter(m => m.id !== tempId))
-          };
-        });
-      }, 1000);
 
     } catch (err) {
       Alert.alert('Error', 'Failed to send message');
@@ -275,68 +430,40 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     }, 2000);
   };
 
-  const handleMessageAction = (msg: ChatMessage) => {
+  const handleMessageAction = useCallback((msg: ChatMessage) => {
     if (msg.isDeleted) return;
-    const buttons = [
-      { text: 'Cancel', style: 'cancel' as const },
-      { text: 'Reply', onPress: () => setReplyingTo(msg) }
-    ];
-    if (msg.senderId === currentUserId) {
-      buttons.push({ text: 'Delete', style: 'destructive' as const, onPress: () => deleteMutation.mutate(msg.id) });
-    }
-    Alert.alert('Message Actions', undefined, buttons);
-  };
+    setSelectedMessage(msg);
+    setOptionsModalVisible(true);
+  }, []);
 
-  const renderMessage = ({ item }: { item: ChatMessage }) => {
-    const isOwn = item.senderId === currentUserId;
-    if (item.isDeleted) {
-      return (
-        <View style={[styles.messageBubble, isOwn ? styles.ownBubble : styles.otherBubble, { backgroundColor: theme.surfaceSecondary }]}>
-          <Text style={[styles.messageText, { color: theme.textSecondary, fontStyle: 'italic' }]}>Message deleted</Text>
-        </View>
-      );
+  const handleScrollToMessage = useCallback((messageId: string) => {
+    const index = messages.findIndex(m => m.id === messageId);
+    if (index !== -1) {
+      // Scroll to the message (viewPosition 0.5 centers it on screen)
+      flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      setHighlightedMessageId(messageId);
+      setTimeout(() => {
+        setHighlightedMessageId(null);
+      }, 2000);
     }
+  }, [messages]);
+
+  const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
+    const isOwn = item.senderId === currentUserId;
+    const isHighlighted = item.id === highlightedMessageId;
     return (
-      <TouchableOpacity 
-        onLongPress={() => handleMessageAction(item)}
-        activeOpacity={0.7}
-        style={[
-          styles.messageBubble, 
-          isOwn ? [styles.ownBubble, { backgroundColor: theme.primary }] : [styles.otherBubble, { backgroundColor: theme.surfaceSecondary }]
-        ]}
-      >
-        {item.replyTo && (
-          <View style={[styles.replyQuote, { borderLeftColor: isOwn ? 'rgba(255,255,255,0.5)' : theme.primary, backgroundColor: isOwn ? 'rgba(255,255,255,0.1)' : theme.background }]}>
-            <Text style={[styles.replyQuoteUser, { color: isOwn ? 'rgba(255,255,255,0.9)' : theme.textPrimary }]}>
-              {item.replyTo.sender?.username || 'User'}
-            </Text>
-            {item.replyTo.content ? (
-              <Text numberOfLines={1} style={[styles.replyQuoteText, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
-                {item.replyTo.content}
-              </Text>
-            ) : item.replyTo.media && item.replyTo.media.length > 0 ? (
-              <Text style={[styles.replyQuoteText, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>[Media]</Text>
-            ) : null}
-          </View>
-        )}
-        {item.media && item.media.length > 0 && (
-          <View style={styles.mediaContainer}>
-            {item.media.map(m => (
-              <Image key={m.id} source={{ uri: m.mediaUrl }} style={styles.messageImage} />
-            ))}
-          </View>
-        )}
-        {item.content ? (
-          <Text style={[styles.messageText, { color: isOwn ? '#fff' : theme.textPrimary }]}>
-            {item.content}
-          </Text>
-        ) : null}
-        <Text style={[styles.timestamp, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
-          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </TouchableOpacity>
+      <MessageItem 
+        item={item} 
+        isOwn={isOwn} 
+        theme={theme} 
+        onAction={handleMessageAction} 
+        onReply={handleReply} 
+        onScrollToMessage={handleScrollToMessage}
+        isHighlighted={isHighlighted}
+        currentUserId={currentUserId}
+      />
     );
-  };
+  }, [currentUserId, theme, handleMessageAction, handleReply, handleScrollToMessage, highlightedMessageId]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
@@ -356,6 +483,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
           <ActivityIndicator style={{ flex: 1 }} color={theme.primary} />
         ) : (
           <FlatList
+            ref={flatListRef}
             data={messages}
             inverted
             keyExtractor={item => item.id}
@@ -404,6 +532,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
             <ImageIcon size={24} color={theme.primary} />
           </TouchableOpacity>
           <TextInput
+            ref={inputRef}
             style={[styles.input, { backgroundColor: theme.surfaceSecondary, color: theme.textPrimary }]}
             placeholder="Message..."
             placeholderTextColor={theme.textSecondary}
@@ -415,6 +544,21 @@ export function ChatRoomScreen({ route, navigation }: Props) {
             <Send size={24} color={(content.trim() || images.length > 0) ? theme.primary : theme.textSecondary} />
           </TouchableOpacity>
         </View>
+
+        <OptionsModal
+          visible={optionsModalVisible}
+          onClose={() => setOptionsModalVisible(false)}
+          options={
+            selectedMessage
+              ? [
+                  { label: 'Reply', icon: <CornerUpLeft size={20} color={theme.textPrimary} />, onPress: () => handleReply(selectedMessage) },
+                  ...(selectedMessage.senderId === currentUserId
+                    ? [{ label: 'Delete Message', icon: <Trash2 size={20} color={theme.danger} />, onPress: () => deleteMutation.mutate(selectedMessage.id), isDestructive: true }]
+                    : []),
+                ]
+              : []
+          }
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -541,6 +685,20 @@ const styles = StyleSheet.create({
   },
   replyPreviewText: {
     fontSize: 14,
+  },
+  replyActionContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 16,
+    width: 60,
+  },
+  replyActionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   replyPreviewClose: {
     padding: 8,

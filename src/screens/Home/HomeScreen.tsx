@@ -69,12 +69,6 @@ export function HomeScreen({ navigation }: Props) {
             style={{ width: 270, height: 148, position: 'absolute', marginTop: 20, top: -80, left: -86, zIndex: -1 }}
             resizeMode="contain"
           />
-          <Text style={[
-            styles.headerSubtitle,
-            { color: theme.textSecondary, position: 'absolute', top: 26, left: 60, fontSize: 13, fontWeight: '600' }
-          ]}>
-            Feed, Community & Chat
-          </Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => navigation.navigate('Search')} style={styles.iconBtn}>

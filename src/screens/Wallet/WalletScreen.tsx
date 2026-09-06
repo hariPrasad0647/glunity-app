@@ -3,11 +3,15 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { Button } from '~/components/common/Button';
-import { Wallet as WalletIcon } from 'lucide-react-native';
+import { Wallet as WalletIcon, Gift } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '~/navigation/RootNavigator';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 
 export function WalletScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
