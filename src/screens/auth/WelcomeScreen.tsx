@@ -1,12 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { Button } from '~/components/common/Button';
 import { GoogleAuthButton } from '~/components/auth/GoogleAuthButton';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigation/AuthNavigator';
-import { Globe2 } from 'lucide-react-native';
 import { useGoogleAuthMutation } from '~/queries/auth/authQueries';
 import { useAuthStore } from '~/store/authStore';
 
@@ -35,31 +34,30 @@ export function WelcomeScreen({ navigation }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Globe2 size={64} color={theme.primary} />
-          <Text style={[styles.title, { color: theme.textPrimary }]}>Glunity</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          <Image source={require('../../../assets/logo.png')} style={{ width: 380, height: 120, marginBottom: 8 }} resizeMode="contain" />
+          <Text style={[styles.subtitle, { color: theme.textSecondary, marginTop: 0 }]}>
             Feed, Community & Chat
           </Text>
         </View>
 
         <View style={styles.actionContainer}>
-          <GoogleAuthButton 
-            onSuccess={handleGoogleSuccess} 
-            onError={handleGoogleError} 
+          <GoogleAuthButton
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
             isLoading={googleAuth.isPending}
           />
-          
-          <Button 
-            title="Continue with Email" 
+
+          <Button
+            title="Continue with Email"
             onPress={() => navigation.navigate('Login')}
             style={styles.emailButton}
           />
-          
+
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: theme.textSecondary }]}>
               Don't have an account?{' '}
             </Text>
-            <Text 
+            <Text
               style={[styles.link, { color: theme.primary }]}
               onPress={() => navigation.navigate('Signup')}
             >

@@ -27,12 +27,19 @@ export function ChatRoomScreen({ route, navigation }: Props) {
   
   const { socket, connect, isConnected } = useChatStore();
   
-  // Find conversationId if not provided in route params
   const { data: conversations } = useConversationsQuery();
-  const existingConv = conversations?.find(c => c.otherUser?.id === recipientId);
-  const conversationId = routeConversationId || existingConv?.id;
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(routeConversationId);
 
-  const deleteMutation = useDeleteMessageMutation(conversationId || 'temp');
+  useEffect(() => {
+    if (!activeConversationId && conversations) {
+      const conv = conversations.find(c => c.otherUser?.id === recipientId);
+      if (conv?.conversationId) {
+        setActiveConversationId(conv.conversationId);
+      }
+    }
+  }, [conversations, activeConversationId, recipientId]);
+
+  const deleteMutation = useDeleteMessageMutation(activeConversationId || 'temp');
   
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -48,7 +55,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     fetchNextPage, 
     hasNextPage, 
     isFetchingNextPage 
-  } = useChatMessagesQuery(conversationId || '');
+  } = useChatMessagesQuery(activeConversationId || '');
 
   const messages = useMemo(() => {
     if (!data) return [];
@@ -63,17 +70,26 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     if (!socket || !isConnected) return;
 
     const handleNewMessage = (payload: { conversationId: string, message: ChatMessage }) => {
-      if (payload.conversationId === conversationId || (!conversationId && payload.message.senderId === recipientId)) {
+      const isForThisRoom = 
+        payload.conversationId === activeConversationId || 
+        (!activeConversationId && (payload.message.senderId === recipientId || payload.message.senderId === currentUserId));
+
+      if (isForThisRoom) {
+        if (!activeConversationId) {
+          setActiveConversationId(payload.conversationId);
+        }
+
         // Append message to the cache
         queryClient.setQueryData(['chatMessages', payload.conversationId], (oldData: any) => {
-          if (!oldData) return oldData;
+          if (!oldData) {
+            return { pages: [[payload.message]], pageParams: [undefined] };
+          }
           
           // Prevent duplicates
           const exists = oldData.pages.some((page: ChatMessage[]) => page.some(m => m.id === payload.message.id));
           if (exists) return oldData;
 
           const newPages = [...oldData.pages];
-          // Backend sends oldest->newest, so newest goes at the end of the first page (or technically we can just append to page 0)
           newPages[0] = [...newPages[0], payload.message];
           return { ...oldData, pages: newPages };
         });
@@ -99,8 +115,8 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     socket.on('chat:stop_typing', handleStopTyping);
 
     // If we just opened the room and have a conversationId, emit read
-    if (conversationId) {
-      socket.emit('chat:read', { conversationId, senderId: recipientId });
+    if (activeConversationId) {
+      socket.emit('chat:read', { conversationId: activeConversationId, senderId: recipientId });
     }
 
     return () => {
@@ -108,7 +124,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
       socket.off('chat:typing', handleTyping);
       socket.off('chat:stop_typing', handleStopTyping);
     };
-  }, [socket, isConnected, conversationId, recipientId, queryClient, currentUserId]);
+  }, [socket, isConnected, activeConversationId, recipientId, queryClient, currentUserId]);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -166,10 +182,12 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     const tempId = `temp_${Date.now()}`;
     const messageContent = content.trim();
     
+    const targetConvId = activeConversationId || '';
+    
     // Optimsitic UI
     const tempMessage: ChatMessage = {
       id: tempId,
-      conversationId: conversationId || 'temp',
+      conversationId: targetConvId,
       senderId: currentUserId!,
       content: messageContent,
       messageType: 'text',
@@ -185,14 +203,12 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     setImages([]);
     socket.emit('chat:stop_typing', { recipientId });
 
-    if (conversationId) {
-      queryClient.setQueryData(['chatMessages', conversationId], (oldData: any) => {
-        if (!oldData) return { pages: [[tempMessage]], pageParams: [undefined] };
-        const newPages = [...oldData.pages];
-        newPages[0] = [...newPages[0], tempMessage];
-        return { ...oldData, pages: newPages };
-      });
-    }
+    queryClient.setQueryData(['chatMessages', targetConvId], (oldData: any) => {
+      if (!oldData) return { pages: [[tempMessage]], pageParams: [undefined] };
+      const newPages = [...oldData.pages];
+      newPages[0] = [...newPages[0], tempMessage];
+      return { ...oldData, pages: newPages };
+    });
 
     try {
       let uploadedMedia: any[] = [];
@@ -206,37 +222,27 @@ export function ChatRoomScreen({ route, navigation }: Props) {
         media: uploadedMedia,
       });
 
-      // The server will respond with 'chat:message' which we use to reconcile in handleNewMessage
-      // Note: A robust system removes the tempMessage here when the real one arrives.
-      // For simplicity, handleNewMessage will just append the real one, which might cause a duplicate momentarily 
-      // if not explicitly filtered. To filter, we'd need the tempId, but the server doesn't echo it.
-      // Realistically we should filter out the temp message when the real one arrives.
-      
-      // Let's remove the temp message after 2 seconds assuming the real one arrived
+      // Let's remove the temp message after 1 second assuming the real one arrived
       setTimeout(() => {
-        if (conversationId) {
-          queryClient.setQueryData(['chatMessages', conversationId], (oldData: any) => {
-            if (!oldData) return oldData;
-            return {
-              ...oldData,
-              pages: oldData.pages.map((page: ChatMessage[]) => page.filter(m => m.id !== tempId))
-            };
-          });
-        }
-      }, 1000);
-
-    } catch (err) {
-      Alert.alert('Error', 'Failed to send message');
-      // Revert optimistic update
-      if (conversationId) {
-        queryClient.setQueryData(['chatMessages', conversationId], (oldData: any) => {
+        queryClient.setQueryData(['chatMessages', targetConvId], (oldData: any) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
             pages: oldData.pages.map((page: ChatMessage[]) => page.filter(m => m.id !== tempId))
           };
         });
-      }
+      }, 1000);
+
+    } catch (err) {
+      Alert.alert('Error', 'Failed to send message');
+      // Revert optimistic update
+      queryClient.setQueryData(['chatMessages', targetConvId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: ChatMessage[]) => page.filter(m => m.id !== tempId))
+        };
+      });
     }
   };
 

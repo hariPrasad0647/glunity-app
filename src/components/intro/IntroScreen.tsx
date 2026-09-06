@@ -1,17 +1,17 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
-  withDelay, 
-  withSequence, 
-  Easing, 
-  runOnJS 
+import { View, StyleSheet, Dimensions, Image } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withSequence,
+  Easing,
+  runOnJS
 } from 'react-native-reanimated';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
-import { Globe } from 'lucide-react-native'; // Temporary logo representation
+
 
 interface IntroScreenProps {
   onFinish: () => void;
@@ -23,7 +23,7 @@ export function IntroScreen({ onFinish }: IntroScreenProps) {
   // We use dark mode colors for the intro to make it feel premium, 
   // as per "Dark navy / clean background" request.
   const { theme } = useTheme();
-  
+
   // Animation values
   const logoOpacity = useSharedValue(0);
   const logoScale = useSharedValue(0.8);
@@ -37,7 +37,7 @@ export function IntroScreen({ onFinish }: IntroScreenProps) {
 
     // 2. Glunity text fades and slides up
     textOpacity.value = withDelay(
-      400, 
+      400,
       withTiming(1, { duration: 500, easing: Easing.out(Easing.ease) })
     );
     textTranslateY.value = withDelay(
@@ -70,16 +70,11 @@ export function IntroScreen({ onFinish }: IntroScreenProps) {
   return (
     <View style={[styles.container, { backgroundColor: '#0B0F19' }]}>
       <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
-        {/* Placeholder for actual Glunity Logo */}
-        <View style={styles.iconWrapper}>
-          <Globe size={64} color="#3B82F6" strokeWidth={1.5} />
-        </View>
-      </Animated.View>
-      
-      <Animated.View style={[styles.textContainer, textAnimatedStyle]}>
-        <Animated.Text style={[styles.brandName, { color: '#F9FAFB' }]}>
-          GLUNITY
-        </Animated.Text>
+        <Image
+          source={require('../../../assets/logo.png')}
+          style={{ width: 380, height: 290 }}
+          resizeMode="contain"
+        />
       </Animated.View>
     </View>
   );

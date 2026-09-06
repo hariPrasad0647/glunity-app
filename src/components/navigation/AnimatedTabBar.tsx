@@ -11,19 +11,19 @@ import Animated, {
 import { useTheme } from '~/hooks/useTheme';
 import { AnimatedTabItem } from './AnimatedTabItem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Wallet, LineChart, Rocket, Building2 } from 'lucide-react-native';
+import { HomeIcon, WalletIcon, ResearchIcon, LaunchpadIcon, DaoIcon } from './TabIcons';
 
 const { width } = Dimensions.get('window');
 
 // Map route names to icons
 const getIconForRoute = (routeName: string, color: string, size: number) => {
   switch (routeName) {
-    case 'Home': return <Home color={color} size={size} />;
-    case 'Wallet': return <Wallet color={color} size={size} />;
-    case 'Research': return <LineChart color={color} size={size} />;
-    case 'Launchpad': return <Rocket color={color} size={size} />;
-    case 'DAO': return <Building2 color={color} size={size} />;
-    default: return <Home color={color} size={size} />;
+    case 'Home': return <HomeIcon color={color} size={size} />;
+    case 'Wallet': return <WalletIcon color={color} size={size} />;
+    case 'Research': return <ResearchIcon color={color} size={size} />;
+    case 'Launchpad': return <LaunchpadIcon color={color} size={size} />;
+    case 'DAO': return <DaoIcon color={color} size={size} />;
+    default: return <HomeIcon color={color} size={size} />;
   }
 };
 
@@ -90,7 +90,7 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
         };
 
         const color = isFocused ? theme.primary : theme.textSecondary;
-        const icon = getIconForRoute(route.name, color, 24);
+        const icon = getIconForRoute(route.name, color, 32);
 
         return (
           <AnimatedTabItem

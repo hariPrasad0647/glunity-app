@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
-import { useLaunchpad } from '~/queries/launchpad/useLaunchpad';
-import { LoadingState } from '~/components/common/LoadingState';
-import { EmptyState } from '~/components/common/EmptyState';
-import { ErrorState } from '~/components/common/ErrorState';
-import { Rocket } from 'lucide-react-native';
+import { Rocket, Calendar } from 'lucide-react-native';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 import { radius } from '~/theme/radius';
@@ -14,10 +10,7 @@ import { radius } from '~/theme/radius';
 export function LaunchpadScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<'ongoing' | 'upcoming'>('ongoing');
-  const { data: projects, isLoading, isError, error, refetch } = useLaunchpad();
-
-  const filteredProjects = projects?.filter(p => p.status === activeTab) || [];
+  const [activeTab, setActiveTab] = useState<'ongoing' | 'past' | 'upcoming'>('ongoing');
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
@@ -36,6 +29,14 @@ export function LaunchpadScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
+          style={[styles.tab, activeTab === 'past' && { borderBottomColor: theme.primary }]}
+          onPress={() => setActiveTab('past')}
+        >
+          <Text style={[styles.tabText, { color: activeTab === 'past' ? theme.primary : theme.textSecondary }]}>
+            Past IDOs
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
           style={[styles.tab, activeTab === 'upcoming' && { borderBottomColor: theme.primary }]}
           onPress={() => setActiveTab('upcoming')}
         >
@@ -45,30 +46,25 @@ export function LaunchpadScreen() {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
-        <LoadingState fullScreen />
-      ) : isError ? (
-        <ErrorState message={error?.message || 'Failed to load projects'} onRetry={refetch} />
-      ) : (
-        <FlatList
-          data={filteredProjects}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={[styles.projectCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.projectName, { color: theme.textPrimary }]}>{item.name}</Text>
-              <Text style={[styles.projectDesc, { color: theme.textSecondary }]}>{item.description}</Text>
-            </View>
-          )}
-          contentContainerStyle={filteredProjects.length === 0 ? styles.emptyContainer : styles.listContent}
-          ListEmptyComponent={
-            <EmptyState 
-              title="No projects" 
-              message={`There are no ${activeTab} IDOs at the moment.`}
-              icon={<Rocket size={48} color={theme.textSecondary} />}
-            />
-          }
-        />
-      )}
+      <View style={styles.comingSoonContainer}>
+        <View style={styles.iconContainer}>
+          <Rocket size={48} color="#475569" strokeWidth={1.5} style={{ zIndex: 1 }} />
+          <View style={[styles.iconShadow, { backgroundColor: theme.primary + '15' }]} />
+        </View>
+
+        <Text style={[styles.comingSoonTitle, { color: theme.textPrimary }]}>
+          Launchpad functionalities{'\n'}will be live in
+        </Text>
+
+        <View style={[styles.badge, { backgroundColor: theme.primary + '10' }]}>
+          <Calendar size={16} color={theme.primary} />
+          <Text style={[styles.badgeText, { color: theme.primary }]}>Phase 7 • Q1-Q2 2027</Text>
+        </View>
+
+        <Text style={[styles.stayTuned, { color: theme.textSecondary }]}>
+          Stay tuned for updates!
+        </Text>
+      </View>
     </View>
   );
 }
@@ -86,12 +82,13 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
   },
   subtitle: {
-    fontSize: typography.sizes.lg,
+    fontSize: typography.sizes.sm,
+    marginTop: spacing.xs,
   },
   tabs: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0', // Or use theme.border
+    borderBottomColor: '#F1F5F9', // light gray
     marginBottom: spacing.md,
   },
   tab: {
@@ -102,28 +99,50 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabText: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
   },
-  listContent: {
-    padding: spacing.md,
-  },
-  emptyContainer: {
+  comingSoonContainer: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxxl * 2, // move it up slightly
   },
-  projectCard: {
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    marginBottom: spacing.md,
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+    position: 'relative',
   },
-  projectName: {
+  iconShadow: {
+    width: 64,
+    height: 16,
+    borderRadius: 8,
+    position: 'absolute',
+    bottom: -6,
+  },
+  comingSoonTitle: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.xs,
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: spacing.lg,
   },
-  projectDesc: {
-    fontSize: typography.sizes.md,
-    lineHeight: 20,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    gap: spacing.xs,
+    marginBottom: spacing.xl,
+  },
+  badgeText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+  },
+  stayTuned: {
+    fontSize: typography.sizes.sm,
   },
 });
