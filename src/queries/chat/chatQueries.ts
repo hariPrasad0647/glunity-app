@@ -28,6 +28,14 @@ export interface ChatMessage {
   updatedAt: string;
   sender?: ChatUser;
   media: ChatMedia[];
+  replyToId?: string | null;
+  replyTo?: {
+    id: string;
+    content: string | null;
+    isDeleted: boolean;
+    sender: ChatUser;
+    media: ChatMedia[];
+  };
 }
 
 export interface Conversation {

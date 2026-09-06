@@ -7,6 +7,7 @@ import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 import { ChevronLeft, MoreHorizontal, Settings, Users, Link2, Lock } from 'lucide-react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { PostCard } from '~/components/feed/PostCard';
 import { 
   useMyProfileQuery, 
@@ -57,6 +58,14 @@ export function ProfileScreen({ route, navigation }: Props) {
     refetchPosts();
   }, [refetch, refetchPosts]);
 
+  const player = useVideoPlayer(profile?.bannerVideo || '', (player) => {
+    player.loop = true;
+    player.muted = true;
+    if (profile?.bannerVideo) {
+      player.play();
+    }
+  });
+
   const handleFollowAction = () => {
     if (!profile) return;
     
@@ -75,8 +84,18 @@ export function ProfileScreen({ route, navigation }: Props) {
 
     return (
       <View style={styles.headerContainer}>
-        {/* Banner/Cover Image could go here. For now, solid color block */}
-        <View style={[styles.coverPhoto, { backgroundColor: theme.surfaceSecondary }]} />
+        {profile.bannerVideo ? (
+          <VideoView 
+            player={player} 
+            style={styles.coverPhoto} 
+            nativeControls={false}
+            contentFit="cover"
+          />
+        ) : profile.bannerImage ? (
+          <Image source={{ uri: profile.bannerImage }} style={styles.coverPhoto} />
+        ) : (
+          <View style={[styles.coverPhoto, { backgroundColor: theme.surfaceSecondary }]} />
+        )}
         
         <View style={styles.profileInfoContainer}>
           <View style={styles.topRow}>

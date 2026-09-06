@@ -11,6 +11,7 @@ import { useUpdateProfileMutation, UserProfile, useGetInterestsQuery } from '~/q
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '~/components/common/Button';
 import { Avatar } from '~/components/common/Avatar';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
@@ -24,6 +25,8 @@ export function EditProfileScreen({ route, navigation }: Props) {
   const [profession, setProfession] = useState(initialProfile.profession || '');
   const [isPrivate, setIsPrivate] = useState(initialProfile.isPrivate);
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
+  const [localBannerUri, setLocalBannerUri] = useState<string | null>(null);
+  const [localBannerType, setLocalBannerType] = useState<'image' | 'video' | null>(null);
 
   const updateMutation = useUpdateProfileMutation();
   const { data: interestsData, isLoading: interestsLoading } = useGetInterestsQuery();
@@ -44,6 +47,30 @@ export function EditProfileScreen({ route, navigation }: Props) {
 
     if (!result.canceled && result.assets[0]) {
       setLocalImageUri(result.assets[0].uri);
+    }
+  };
+
+  const handlePickBanner = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to update your banner.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsEditing: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.type === 'video' && asset.duration && asset.duration > 15000) {
+        Alert.alert('Invalid Video', 'Banner video must be 15 seconds or less.');
+        return;
+      }
+      setLocalBannerUri(asset.uri);
+      setLocalBannerType(asset.type === 'video' ? 'video' : 'image');
     }
   };
 
@@ -72,6 +99,20 @@ export function EditProfileScreen({ route, navigation }: Props) {
         } as any);
       }
 
+      if (localBannerUri) {
+        hasChanges = true;
+        const filename = localBannerUri.split('/').pop() || (localBannerType === 'video' ? 'banner.mp4' : 'banner.jpg');
+        const match = /\.(\w+)$/.exec(filename);
+        let type = match ? `${localBannerType}/${match[1]}` : `${localBannerType}/jpeg`;
+        if (localBannerType === 'video' && !match) type = 'video/mp4';
+
+        formData.append('banner', {
+          uri: Platform.OS === 'ios' ? localBannerUri.replace('file://', '') : localBannerUri,
+          name: filename,
+          type,
+        } as any);
+      }
+
       if (!hasChanges) {
         navigation.goBack();
         return;
@@ -86,6 +127,14 @@ export function EditProfileScreen({ route, navigation }: Props) {
   };
 
   const displayImage = localImageUri || initialProfile.profileImage;
+  const displayBannerImage = localBannerType === 'image' ? localBannerUri : (!localBannerUri ? initialProfile.bannerImage : null);
+  const displayBannerVideo = localBannerType === 'video' ? localBannerUri : (!localBannerUri ? initialProfile.bannerVideo : null);
+
+  const player = useVideoPlayer(displayBannerVideo || '', (player) => {
+    player.loop = true;
+    player.muted = true;
+    if (displayBannerVideo) player.play();
+  });
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
@@ -108,6 +157,26 @@ export function EditProfileScreen({ route, navigation }: Props) {
         </View>
 
         <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: 40 }}>
+          <View style={styles.bannerSection}>
+            <TouchableOpacity onPress={handlePickBanner} style={styles.bannerWrapper}>
+              {displayBannerVideo ? (
+                <VideoView 
+                  player={player} 
+                  style={styles.banner} 
+                  nativeControls={false}
+                  contentFit="cover"
+                />
+              ) : displayBannerImage ? (
+                <Image source={{ uri: displayBannerImage }} style={styles.banner} />
+              ) : (
+                <View style={[styles.banner, styles.bannerPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
+              )}
+              <View style={[styles.bannerCameraBadge, { backgroundColor: theme.primary }]}>
+                <Camera size={16} color="#fff" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.avatarSection}>
             <TouchableOpacity onPress={handlePickImage} style={styles.avatarWrapper}>
               <Avatar uri={displayImage} size={96} style={{ borderColor: theme.border, borderWidth: 1 }} />
@@ -221,9 +290,38 @@ const styles = StyleSheet.create({
   scrollContent: {
     flex: 1,
   },
+  bannerSection: {
+    width: '100%',
+  },
+  bannerWrapper: {
+    width: '100%',
+    height: 120,
+    position: 'relative',
+  },
+  banner: {
+    width: '100%',
+    height: 120,
+  },
+  bannerPlaceholder: {
+    width: '100%',
+    height: 120,
+  },
+  bannerCameraBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
   avatarSection: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    marginTop: -48,
+    marginBottom: spacing.xl,
   },
   avatarWrapper: {
     position: 'relative',

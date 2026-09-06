@@ -6,7 +6,7 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { ChevronLeft, Send, Image as ImageIcon, X } from 'lucide-react-native';
+import { ChevronLeft, Send, Image as ImageIcon, X, Reply } from 'lucide-react-native';
 import { useChatMessagesQuery, ChatMessage, useDeleteMessageMutation, useConversationsQuery } from '~/queries/chat/chatQueries';
 import { useAuthStore } from '~/store/authStore';
 import { useChatStore } from '~/store/chatStore';
@@ -24,6 +24,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
   const [images, setImages] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   
   const { socket, connect, isConnected } = useChatStore();
   
@@ -197,10 +198,20 @@ export function ChatRoomScreen({ route, navigation }: Props) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       media: images.map(uri => ({ id: uri, mediaUrl: uri, mediaType: 'image', thumbnailUrl: null })),
+      replyToId: replyingTo?.id || null,
+      replyTo: replyingTo ? {
+        id: replyingTo.id,
+        content: replyingTo.content,
+        isDeleted: replyingTo.isDeleted,
+        sender: replyingTo.sender || { id: replyingTo.senderId, username: replyingTo.senderId === currentUserId ? 'You' : recipientUsername, profileImage: null, fullName: '' },
+        media: replyingTo.media,
+      } : undefined,
     };
 
     setContent('');
     setImages([]);
+    const currentReplyToId = replyingTo?.id || null;
+    setReplyingTo(null);
     socket.emit('chat:stop_typing', { recipientId });
 
     queryClient.setQueryData(['chatMessages', targetConvId], (oldData: any) => {
@@ -220,6 +231,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
         recipientId,
         content: messageContent,
         media: uploadedMedia,
+        replyToId: currentReplyToId,
       });
 
       // Let's remove the temp message after 1 second assuming the real one arrived
@@ -263,12 +275,16 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     }, 2000);
   };
 
-  const confirmDelete = (msg: ChatMessage) => {
-    if (msg.senderId !== currentUserId || msg.isDeleted) return;
-    Alert.alert('Delete Message', 'Are you sure you want to delete this message?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(msg.id) }
-    ]);
+  const handleMessageAction = (msg: ChatMessage) => {
+    if (msg.isDeleted) return;
+    const buttons = [
+      { text: 'Cancel', style: 'cancel' as const },
+      { text: 'Reply', onPress: () => setReplyingTo(msg) }
+    ];
+    if (msg.senderId === currentUserId) {
+      buttons.push({ text: 'Delete', style: 'destructive' as const, onPress: () => deleteMutation.mutate(msg.id) });
+    }
+    Alert.alert('Message Actions', undefined, buttons);
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
@@ -282,13 +298,27 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     }
     return (
       <TouchableOpacity 
-        onLongPress={() => confirmDelete(item)}
-        activeOpacity={isOwn ? 0.7 : 1}
+        onLongPress={() => handleMessageAction(item)}
+        activeOpacity={0.7}
         style={[
           styles.messageBubble, 
           isOwn ? [styles.ownBubble, { backgroundColor: theme.primary }] : [styles.otherBubble, { backgroundColor: theme.surfaceSecondary }]
         ]}
       >
+        {item.replyTo && (
+          <View style={[styles.replyQuote, { borderLeftColor: isOwn ? 'rgba(255,255,255,0.5)' : theme.primary, backgroundColor: isOwn ? 'rgba(255,255,255,0.1)' : theme.background }]}>
+            <Text style={[styles.replyQuoteUser, { color: isOwn ? 'rgba(255,255,255,0.9)' : theme.textPrimary }]}>
+              {item.replyTo.sender?.username || 'User'}
+            </Text>
+            {item.replyTo.content ? (
+              <Text numberOfLines={1} style={[styles.replyQuoteText, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
+                {item.replyTo.content}
+              </Text>
+            ) : item.replyTo.media && item.replyTo.media.length > 0 ? (
+              <Text style={[styles.replyQuoteText, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>[Media]</Text>
+            ) : null}
+          </View>
+        )}
         {item.media && item.media.length > 0 && (
           <View style={styles.mediaContainer}>
             {item.media.map(m => (
@@ -354,6 +384,21 @@ export function ChatRoomScreen({ route, navigation }: Props) {
           </View>
         )}
 
+        {replyingTo && (
+          <View style={[styles.replyPreviewContainer, { borderTopColor: theme.border, backgroundColor: theme.surfaceSecondary }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.replyPreviewTitle, { color: theme.primary }]}>
+                Replying to {replyingTo.sender?.username || (replyingTo.senderId === currentUserId ? 'You' : recipientUsername)}
+              </Text>
+              <Text numberOfLines={1} style={[styles.replyPreviewText, { color: theme.textSecondary }]}>
+                {replyingTo.content || '[Media]'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setReplyingTo(null)} style={styles.replyPreviewClose}>
+              <X size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={[styles.inputRow, { borderTopColor: theme.border }]}>
           <TouchableOpacity onPress={handlePickImage} style={styles.attachBtn}>
             <ImageIcon size={24} color={theme.primary} />
@@ -481,5 +526,38 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     borderRadius: 10,
     padding: 4,
+  },
+  replyPreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  replyPreviewTitle: {
+    fontSize: 12,
+    fontWeight: typography.weights.bold,
+    marginBottom: 2,
+  },
+  replyPreviewText: {
+    fontSize: 14,
+  },
+  replyPreviewClose: {
+    padding: 8,
+  },
+  replyQuote: {
+    borderLeftWidth: 3,
+    paddingLeft: 8,
+    paddingVertical: 4,
+    marginBottom: 6,
+    borderRadius: 4,
+  },
+  replyQuoteUser: {
+    fontSize: 12,
+    fontWeight: typography.weights.bold,
+    marginBottom: 2,
+  },
+  replyQuoteText: {
+    fontSize: 14,
   }
 });

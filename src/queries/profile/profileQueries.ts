@@ -12,6 +12,8 @@ export interface UserProfile {
   bio?: string;
   profession?: string;
   profileImage: string | null;
+  bannerImage: string | null;
+  bannerVideo: string | null;
   isPrivate: boolean;
   createdAt: string;
   postCount: number;
