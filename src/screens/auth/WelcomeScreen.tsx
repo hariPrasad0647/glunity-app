@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Linking from 'expo-linking';
 import { View, StyleSheet, Text, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
@@ -15,10 +16,18 @@ export function WelcomeScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const googleAuth = useGoogleAuthMutation();
   const login = useAuthStore(state => state.login);
+  const url = Linking.useURL();
 
   const handleGoogleSuccess = async (idToken: string) => {
     try {
-      const response = await googleAuth.mutateAsync({ idToken });
+      let referralCode = undefined;
+      if (url) {
+        const { queryParams } = Linking.parse(url);
+        if (queryParams?.ref) {
+          referralCode = queryParams.ref as string;
+        }
+      }
+      const response = await googleAuth.mutateAsync({ idToken, ...(referralCode ? { referralCode } : {}) });
       await login(response.user, response.accessToken, response.refreshToken);
     } catch (error: any) {
       // Could show a toast here. Error is caught and usually logged.

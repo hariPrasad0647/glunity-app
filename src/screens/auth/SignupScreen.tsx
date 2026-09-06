@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, TextInput, KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
@@ -7,18 +7,31 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigation/AuthNavigator';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSignupMutation } from '~/queries/auth/authQueries';
+import * as Linking from 'expo-linking';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
 export function SignupScreen({ navigation }: Props) {
   const { theme } = useTheme();
   
+  const url = Linking.useURL();
+  
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
     email: '',
     phone: '',
+    referralCode: '',
   });
+
+  useEffect(() => {
+    if (url) {
+      const { queryParams } = Linking.parse(url);
+      if (queryParams?.ref) {
+        setFormData(prev => ({ ...prev, referralCode: queryParams.ref as string }));
+      }
+    }
+  }, [url]);
   const [error, setError] = useState('');
   
   const signupMutation = useSignupMutation();
@@ -41,6 +54,7 @@ export function SignupScreen({ navigation }: Props) {
         username: formData.username.trim(),
         email: formData.email.toLowerCase().trim(),
         phone: formData.phone.trim(),
+        ...(formData.referralCode ? { referralCode: formData.referralCode.trim() } : {}),
       });
       navigation.navigate('OtpVerification', { email: formData.email.toLowerCase().trim(), flow: 'signup' });
     } catch (err: any) {
@@ -138,6 +152,22 @@ export function SignupScreen({ navigation }: Props) {
                   setError('');
                 }}
                 keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Referral Code (Optional)</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.surfaceSecondary, color: theme.textPrimary, borderColor: theme.border }]}
+                placeholder="Got a code?"
+                placeholderTextColor={theme.textSecondary}
+                value={formData.referralCode}
+                onChangeText={(text) => {
+                  setFormData(prev => ({ ...prev, referralCode: text }));
+                  setError('');
+                }}
+                autoCapitalize="characters"
+                autoCorrect={false}
               />
             </View>
 

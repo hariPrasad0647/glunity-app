@@ -54,6 +54,13 @@ export function SettingsScreen({ navigation }: Props) {
 
         <TouchableOpacity 
           style={[styles.settingRow, { borderBottomColor: theme.border }]}
+          onPress={() => navigation.navigate('Referrals')}
+        >
+          <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>Refer & Earn</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.settingRow, { borderBottomColor: theme.border }]}
           onPress={() => {
             logout();
           }}

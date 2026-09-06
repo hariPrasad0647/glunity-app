@@ -22,7 +22,7 @@ export interface EmailData {
 // 1. Signup Request (POST /api/auth/signup)
 export const useSignupMutation = () => {
   return useMutation({
-    mutationFn: async (data: { fullName: string; username: string; email: string; phone: string }) => {
+    mutationFn: async (data: { fullName: string; username: string; email: string; phone: string; referralCode?: string }) => {
       const response = await apiClient.post<BaseResponse<EmailData>>('/api/auth/signup', data);
       return response.data.data; // Return the nested data
     },
@@ -72,7 +72,7 @@ export const useVerifyLoginOTPMutation = () => {
 // 6. Google Auth (POST /api/auth/google)
 export const useGoogleAuthMutation = () => {
   return useMutation({
-    mutationFn: async (data: { idToken: string }) => {
+    mutationFn: async (data: { idToken: string; referralCode?: string }) => {
       const response = await apiClient.post<BaseResponse<AuthData>>('/api/auth/google', data);
       return response.data.data;
     },
