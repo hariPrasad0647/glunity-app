@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import client from '~/api/client';
+import { apiClient } from '~/api/client';
 
 export interface ReferralStats {
   referral_code: string;
@@ -29,7 +29,7 @@ export const useMyReferral = () => {
   return useQuery({
     queryKey: ['myReferral'],
     queryFn: async () => {
-      const response = await client.get<{ success: boolean; data: ReferralStats }>('/referrals/me');
+      const response = await apiClient.get<{ success: boolean; data: ReferralStats }>('/api/referrals/me');
       return response.data.data;
     },
   });
@@ -39,8 +39,8 @@ export const useReferralHistory = (page = 1, limit = 20) => {
   return useQuery({
     queryKey: ['referralHistory', page, limit],
     queryFn: async () => {
-      const response = await client.get<{ success: boolean; data: ReferralHistoryResponse }>(
-        `/referrals/history?page=${page}&limit=${limit}`
+      const response = await apiClient.get<{ success: boolean; data: ReferralHistoryResponse }>(
+        `/api/referrals/history?page=${page}&limit=${limit}`
       );
       return response.data.data;
     },

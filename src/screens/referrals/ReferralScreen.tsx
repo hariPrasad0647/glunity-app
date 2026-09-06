@@ -1,24 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share, Clipboard } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '~/hooks/useTheme';
 import { useMyReferral, useReferralHistory } from '~/queries/referrals/referralQueries';
-import * as Clipboard from 'expo-clipboard';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '~/navigation/RootNavigator';
 
-export function ReferralScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'Referrals'>;
+
+export function ReferralScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const { data: stats, isLoading: statsLoading } = useMyReferral();
   const { data: history, isLoading: historyLoading } = useReferralHistory();
 
-  const handleCopyCode = async () => {
+  const handleCopyCode = () => {
     if (stats?.referral_code) {
-      await Clipboard.setStringAsync(stats.referral_code);
+      Clipboard.setString(stats.referral_code);
       alert('Referral code copied to clipboard!');
     }
   };
 
-  const handleCopyLink = async () => {
+  const handleCopyLink = () => {
     if (stats?.referral_link) {
-      await Clipboard.setStringAsync(stats.referral_link);
+      Clipboard.setString(stats.referral_link);
       alert('Referral link copied to clipboard!');
     }
   };
@@ -37,92 +42,111 @@ export function ReferralScreen() {
 
   if (statsLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.section}>
-        <Text style={[styles.header, { color: theme.colors.text }]}>REFER & EARN</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+      <View style={[styles.navBar, { borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+          <ChevronLeft size={24} color={theme.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.navTitle, { color: theme.textPrimary }]}>Refer & Earn</Text>
+        <View style={styles.iconBtn} />
+      </View>
+      <ScrollView style={styles.container}>
+        <View style={styles.section}>
+        <Text style={[styles.header, { color: theme.textPrimary }]}>REFER & EARN</Text>
         
-        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Your Referral Code:</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>Your Referral Code:</Text>
         <View style={styles.row}>
-          <Text style={[styles.code, { color: theme.colors.primary }]}>{stats?.referral_code}</Text>
-          <TouchableOpacity onPress={handleCopyCode} style={[styles.button, { backgroundColor: theme.colors.card }]}>
-            <Text style={{ color: theme.colors.primary }}>Copy</Text>
+          <Text style={[styles.code, { color: theme.primary }]}>{stats?.referral_code}</Text>
+          <TouchableOpacity onPress={handleCopyCode} style={[styles.button, { backgroundColor: theme.surface }]}>
+            <Text style={{ color: theme.primary }}>Copy</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.label, { color: theme.colors.textSecondary, marginTop: 16 }]}>Your Referral Link:</Text>
+        <Text style={[styles.label, { color: theme.textSecondary, marginTop: 16 }]}>Your Referral Link:</Text>
         <View style={styles.row}>
-          <Text style={[styles.link, { color: theme.colors.primary }]} numberOfLines={1}>
+          <Text style={[styles.link, { color: theme.primary }]} numberOfLines={1}>
             {stats?.referral_link}
           </Text>
         </View>
         <View style={styles.row}>
-          <TouchableOpacity onPress={handleCopyLink} style={[styles.button, { backgroundColor: theme.colors.card, flex: 1, marginRight: 8 }]}>
-            <Text style={{ color: theme.colors.primary, textAlign: 'center' }}>Copy Link</Text>
+          <TouchableOpacity onPress={handleCopyLink} style={[styles.button, { backgroundColor: theme.surface, flex: 1, marginRight: 8 }]}>
+            <Text style={{ color: theme.primary, textAlign: 'center' }}>Copy Link</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={[styles.button, { backgroundColor: theme.colors.primary, flex: 1, marginLeft: 8 }]}>
+          <TouchableOpacity onPress={handleShare} style={[styles.button, { backgroundColor: theme.primary, flex: 1, marginLeft: 8 }]}>
             <Text style={{ color: '#fff', textAlign: 'center' }}>Share</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.header, { color: theme.colors.text }]}>Referral Statistics</Text>
-        <View style={[styles.statsGrid, { backgroundColor: theme.colors.card }]}>
+        <Text style={[styles.header, { color: theme.textPrimary }]}>Referral Statistics</Text>
+        <View style={[styles.statsGrid, { backgroundColor: theme.surface }]}>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.colors.text }]}>{stats?.total_referrals || 0}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Total</Text>
+            <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.total_referrals || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.colors.text }]}>{stats?.successful_referrals || 0}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Successful</Text>
+            <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.successful_referrals || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Successful</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.colors.text }]}>{stats?.pending_referrals || 0}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Pending</Text>
+            <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.pending_referrals || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pending</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.colors.text }]}>{stats?.points_earned || 0}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Points</Text>
+            <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.points_earned || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Points</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.header, { color: theme.colors.text }]}>Referral History</Text>
+        <Text style={[styles.header, { color: theme.textPrimary }]}>Referral History</Text>
         {historyLoading ? (
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <ActivityIndicator size="small" color={theme.primary} />
         ) : (
           history?.referrals.map((ref) => (
-            <View key={ref.id} style={[styles.historyItem, { borderBottomColor: theme.colors.border }]}>
+            <View key={ref.id} style={[styles.historyItem, { borderBottomColor: theme.border }]}>
               <View>
-                <Text style={[styles.historyTitle, { color: theme.colors.text }]}>
+                <Text style={[styles.historyTitle, { color: theme.textPrimary }]}>
                   {ref.status === 'COMPLETED' ? 'Successful Referral' : 'Pending Referral'}
                 </Text>
-                <Text style={[styles.historyDate, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.historyDate, { color: theme.textSecondary }]}>
                   {new Date(ref.created_at).toLocaleDateString()}
                 </Text>
               </View>
-              <Text style={[styles.historyPoints, { color: ref.points_awarded > 0 ? theme.colors.success : theme.colors.textSecondary }]}>
+              <Text style={[styles.historyPoints, { color: ref.points_awarded > 0 ? theme.success : theme.textSecondary }]}>
                 +{ref.points_awarded} pts
               </Text>
             </View>
           ))
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  navBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    height: 56,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  iconBtn: { padding: 8, width: 40 },
+  navTitle: { fontSize: 18, fontWeight: 'bold' },
   section: { padding: 16 },
   header: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
   label: { fontSize: 14, marginBottom: 8 },

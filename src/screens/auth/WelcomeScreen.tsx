@@ -1,6 +1,5 @@
 import React from 'react';
-import * as Linking from 'expo-linking';
-import { View, StyleSheet, Text, Image } from 'react-native';
+import { View, StyleSheet, Text, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { Button } from '~/components/common/Button';
@@ -16,15 +15,15 @@ export function WelcomeScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const googleAuth = useGoogleAuthMutation();
   const login = useAuthStore(state => state.login);
-  const url = Linking.useURL();
 
   const handleGoogleSuccess = async (idToken: string) => {
     try {
       let referralCode = undefined;
+      const url = await Linking.getInitialURL();
       if (url) {
-        const { queryParams } = Linking.parse(url);
-        if (queryParams?.ref) {
-          referralCode = queryParams.ref as string;
+        const refMatch = url.match(/[?&]ref=([^&]+)/);
+        if (refMatch && refMatch[1]) {
+          referralCode = refMatch[1];
         }
       }
       const response = await googleAuth.mutateAsync({ idToken, ...(referralCode ? { referralCode } : {}) });

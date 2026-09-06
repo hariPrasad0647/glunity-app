@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, TextInput, KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Text, TextInput, KeyboardAvoidingView, Platform, Pressable, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { Button } from '~/components/common/Button';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigation/AuthNavigator';
+
 import { ChevronLeft } from 'lucide-react-native';
 import { useSignupMutation } from '~/queries/auth/authQueries';
-import * as Linking from 'expo-linking';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
 export function SignupScreen({ navigation }: Props) {
   const { theme } = useTheme();
-  
-  const url = Linking.useURL();
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -25,13 +23,15 @@ export function SignupScreen({ navigation }: Props) {
   });
 
   useEffect(() => {
-    if (url) {
-      const { queryParams } = Linking.parse(url);
-      if (queryParams?.ref) {
-        setFormData(prev => ({ ...prev, referralCode: queryParams.ref as string }));
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        const refMatch = url.match(/[?&]ref=([^&]+)/);
+        if (refMatch && refMatch[1]) {
+          setFormData(prev => ({ ...prev, referralCode: refMatch[1] }));
+        }
       }
-    }
-  }, [url]);
+    });
+  }, []);
   const [error, setError] = useState('');
   
   const signupMutation = useSignupMutation();

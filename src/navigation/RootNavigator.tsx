@@ -92,6 +92,7 @@ export function RootNavigator() {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="UserActivity" component={UserActivityScreen} />
             <Stack.Screen name="AirdropPoints" component={AirdropPointsScreen} />
+            <Stack.Screen name="Referrals" component={ReferralScreen} />
           </Stack.Group>
         </>
       )}
