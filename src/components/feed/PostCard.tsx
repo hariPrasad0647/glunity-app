@@ -1,13 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, TouchableWithoutFeedback } from 'react-native';
 import { MessageCircle, Repeat2, Heart, Bookmark, MoreHorizontal, BadgeCheck, Trash2 } from 'lucide-react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
-  withSequence, 
-  withDelay, 
-  withTiming 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  withDelay,
+  withTiming
 } from 'react-native-reanimated';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useTheme } from '~/hooks/useTheme';
@@ -28,14 +28,14 @@ const VideoRenderer = ({ mediaUrl, theme, onPress, bigHeartAnimatedStyle }: any)
   const player = useVideoPlayer(mediaUrl, player => {
     player.loop = true;
   });
-  
+
   return (
     <TouchableWithoutFeedback onPress={onPress}>
       <View style={styles.mediaContainer}>
-        <VideoView 
-          style={[styles.mediaImage, { borderColor: theme.border }]} 
-          player={player} 
-          nativeControls 
+        <VideoView
+          style={[styles.mediaImage, { borderColor: theme.border }]}
+          player={player}
+          nativeControls
           contentFit="cover"
         />
         <Animated.View style={[styles.bigHeartContainer, bigHeartAnimatedStyle]} pointerEvents="none">
@@ -48,18 +48,18 @@ const VideoRenderer = ({ mediaUrl, theme, onPress, bigHeartAnimatedStyle }: any)
 
 const PostMediaRenderer = ({ mediaUrl, theme, onPress, bigHeartAnimatedStyle }: any) => {
   const isVideo = mediaUrl.toLowerCase().match(/\.(mp4|mov|mkv|webm)$/);
-  
+
   if (isVideo) {
     return <VideoRenderer mediaUrl={mediaUrl} theme={theme} onPress={onPress} bigHeartAnimatedStyle={bigHeartAnimatedStyle} />;
   }
-  
+
   return (
     <TouchableWithoutFeedback onPress={onPress}>
       <View style={styles.mediaContainer}>
-        <Image 
-          source={{ uri: mediaUrl }} 
-          style={[styles.mediaImage, { borderColor: theme.border }]} 
-          resizeMode="cover" 
+        <Image
+          source={{ uri: mediaUrl }}
+          style={[styles.mediaImage, { borderColor: theme.border }]}
+          resizeMode="cover"
         />
         <Animated.View style={[styles.bigHeartContainer, bigHeartAnimatedStyle]} pointerEvents="none">
           <Heart size={80} color="white" fill="white" />
@@ -78,7 +78,7 @@ interface PostCardProps {
 
 export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardProps) {
   const { theme } = useTheme();
-  
+
   const likeMutation = useLikeMutation(post.id);
   const bookmarkMutation = useBookmarkMutation(post.id);
   const repostMutation = useRepostMutation(post.id);
@@ -116,9 +116,8 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
 
   const triggerLikeAnimation = useCallback(() => {
     likeButtonScale.value = withSequence(
-      withTiming(0.8, { duration: 50 }),
-      withSpring(1.3, { damping: 6, stiffness: 400 }),
-      withTiming(1, { duration: 50 })
+      withTiming(1.3, { duration: 250 }),
+      withTiming(1, { duration: 250 })
     );
   }, [likeButtonScale]);
 
@@ -134,14 +133,14 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
       // Double tap detected
       bigHeartScale.value = withSequence(
         withTiming(0, { duration: 0 }),
-        withSpring(1, { damping: 12, stiffness: 250 }),
-        withDelay(300, withTiming(0, { duration: 150 }))
+        withTiming(1, { duration: 250 }),
+        withDelay(250, withTiming(0, { duration: 250 }))
       );
       bigHeartOpacity.value = withSequence(
         withTiming(1, { duration: 0 }),
-        withDelay(300, withTiming(0, { duration: 150 }))
+        withDelay(250, withTiming(0, { duration: 250 }))
       );
-      
+
       if (!post.hasLiked) {
         handleLike();
       }
@@ -164,14 +163,14 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
       // Double tap
       bigHeartScale.value = withSequence(
         withTiming(0, { duration: 0 }),
-        withSpring(1, { damping: 12, stiffness: 250 }),
-        withDelay(300, withTiming(0, { duration: 150 }))
+        withTiming(1, { duration: 250 }),
+        withDelay(250, withTiming(0, { duration: 250 }))
       );
       bigHeartOpacity.value = withSequence(
         withTiming(1, { duration: 0 }),
-        withDelay(300, withTiming(0, { duration: 150 }))
+        withDelay(250, withTiming(0, { duration: 250 }))
       );
-      
+
       if (!post.hasLiked) {
         handleLike();
       }
@@ -218,8 +217,8 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
   });
 
   return (
-    <TouchableOpacity 
-      style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]} 
+    <TouchableOpacity
+      style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -251,11 +250,11 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
         <Text style={[styles.text, { color: theme.textPrimary }]}>{post.content}</Text>
 
         {post.media && post.media.length > 0 && (
-          <PostMediaRenderer 
-            mediaUrl={post.media[0]} 
-            theme={theme} 
-            onPress={handleImagePress} 
-            bigHeartAnimatedStyle={bigHeartAnimatedStyle} 
+          <PostMediaRenderer
+            mediaUrl={post.media[0]}
+            theme={theme}
+            onPress={handleImagePress}
+            bigHeartAnimatedStyle={bigHeartAnimatedStyle}
           />
         )}
 
@@ -286,7 +285,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
         </View>
       </View>
 
-      <OptionsModal 
+      <OptionsModal
         visible={optionsVisible}
         options={postOptions}
         onClose={() => setOptionsVisible(false)}
