@@ -37,6 +37,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    // Disconnect chat socket
+    const { useChatStore } = await import('./chatStore');
+    useChatStore.getState().disconnect();
+
+    // Clear react-query cache to prevent data leakage between sessions
+    const { queryClient } = await import('~/api/QueryProvider');
+    queryClient.clear();
+
     await deleteSecureItem('accessToken');
     await deleteSecureItem('refreshToken');
     await deleteSecureItem('user');

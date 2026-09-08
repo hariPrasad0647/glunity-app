@@ -23,6 +23,8 @@ export interface UserProfile {
   followStatus: FollowStatus;
   isMutual?: boolean;
   isOwnProfile: boolean;
+  trustScore?: number;
+  trustTier?: string;
   posts?: {
     items: Post[];
     total: number;

@@ -76,7 +76,6 @@ export function ChatListScreen({ navigation }: Props) {
     <TouchableOpacity 
       style={[styles.row, { borderBottomColor: theme.border }]}
       onPress={() => navigation.push('ChatRoom', { 
-        conversationId: item.conversationId, // Passing conversationId if one exists
         recipientId: item.id,
         recipientUsername: item.username
       })}

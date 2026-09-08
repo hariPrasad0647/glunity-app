@@ -28,6 +28,7 @@ export interface ChatMessage {
   updatedAt: string;
   sender?: ChatUser;
   media: ChatMedia[];
+<<<<<<< Updated upstream
   replyToId?: string | null;
   replyTo?: {
     id: string;
@@ -36,6 +37,10 @@ export interface ChatMessage {
     sender: ChatUser;
     media: ChatMedia[];
   };
+=======
+  /** Client-only flag to identify optimistic messages */
+  _isOptimistic?: boolean;
+>>>>>>> Stashed changes
 }
 
 export interface Conversation {
@@ -45,7 +50,6 @@ export interface Conversation {
   lastReadAt: string;
 }
 
-// Force Metro rebuild
 export const useConversationsQuery = () => {
   return useQuery({
     queryKey: ['conversations'],
@@ -53,6 +57,8 @@ export const useConversationsQuery = () => {
       const { data } = await apiClient.get<{ data: Conversation[] }>('/api/chat/conversations');
       return data.data;
     },
+    // Always refetch when the screen mounts so the list is never stale
+    refetchOnMount: true,
   });
 };
 
@@ -75,6 +81,8 @@ export const useChatMessagesQuery = (conversationId: string) => {
       return lastPage[0]?.createdAt; // The oldest message in the batch
     },
     enabled: !!conversationId,
+    // Always refetch the first page when navigating back to the chat
+    refetchOnMount: true,
   });
 };
 
@@ -116,3 +124,54 @@ export const useDeleteMessageMutation = (conversationId: string) => {
     },
   });
 };
+
+/**
+ * Helper: append a message to the last page of the infinite query cache.
+ * New messages belong at the END of the last page (newest batch).
+ */
+export function appendMessageToCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  conversationId: string,
+  message: ChatMessage,
+) {
+  queryClient.setQueryData(['chatMessages', conversationId], (oldData: any) => {
+    if (!oldData) {
+      return { pages: [[message]], pageParams: [undefined] };
+    }
+
+    // Check for duplicates across all pages
+    const exists = oldData.pages.some((page: ChatMessage[]) =>
+      page.some((m: ChatMessage) => m.id === message.id)
+    );
+    if (exists) return oldData;
+
+    const newPages = oldData.pages.map((page: ChatMessage[], index: number) => {
+      if (index === oldData.pages.length - 1) {
+        // Append to the last page (the most recent batch)
+        return [...page, message];
+      }
+      return page;
+    });
+    return { ...oldData, pages: newPages };
+  });
+}
+
+/**
+ * Helper: remove a temporary (optimistic) message by its temp ID,
+ * used when the real server message arrives or on send failure.
+ */
+export function removeTempMessageFromCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  conversationId: string,
+  tempId: string,
+) {
+  queryClient.setQueryData(['chatMessages', conversationId], (oldData: any) => {
+    if (!oldData) return oldData;
+    return {
+      ...oldData,
+      pages: oldData.pages.map((page: ChatMessage[]) =>
+        page.filter((m: ChatMessage) => m.id !== tempId)
+      ),
+    };
+  });
+}

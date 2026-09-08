@@ -7,8 +7,12 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
+<<<<<<< Updated upstream
 import { ChevronLeft, MoreHorizontal, Settings, Users, Link2, Lock } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+=======
+import { ChevronLeft, MoreHorizontal, Settings, Users, Link2, Lock, Shield } from 'lucide-react-native';
+>>>>>>> Stashed changes
 import { PostCard } from '~/components/feed/PostCard';
 import { 
   useMyProfileQuery, 
@@ -20,6 +24,7 @@ import { useUserPostsQuery } from '~/queries/post/postQueries';
 import { Avatar } from '~/components/common/Avatar';
 import { Button } from '~/components/common/Button';
 import { useAuthStore } from '~/store/authStore';
+import { getTierColor } from '~/theme/trustScoreTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -183,6 +188,19 @@ export function ProfileScreen({ route, navigation }: Props) {
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Followers</Text>
             </TouchableOpacity>
           </View>
+
+          {profile.trustScore !== undefined && (
+            <TouchableOpacity 
+              style={[styles.trustScoreBadge, { borderColor: getTierColor(profile.trustTier), backgroundColor: getTierColor(profile.trustTier) + '15' }]}
+              onPress={() => navigation.navigate('TrustScore')}
+            >
+              <Shield size={16} color={getTierColor(profile.trustTier)} style={{ marginRight: 6 }} />
+              <Text style={[styles.trustScoreValue, { color: theme.textPrimary }]}>{profile.trustScore}</Text>
+              <Text style={[styles.trustScoreTier, { color: getTierColor(profile.trustTier) }]}>
+                {profile.trustTier?.replace('_', ' ') || 'UNVERIFIED'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {!canViewContent && (
@@ -401,5 +419,24 @@ const styles = StyleSheet.create({
   },
   privateDesc: {
     fontSize: typography.sizes.md,
+  },
+  trustScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: spacing.md,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  trustScoreValue: {
+    fontSize: typography.sizes.md,
+    fontWeight: 'bold',
+    marginRight: 6,
+  },
+  trustScoreTier: {
+    fontSize: typography.sizes.sm,
+    fontWeight: 'bold',
   }
 });
