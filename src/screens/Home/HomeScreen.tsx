@@ -9,6 +9,7 @@ import { useFeedQuery } from '~/queries/post/postQueries';
 import { useMyProfileQuery } from '~/queries/profile/profileQueries';
 import { useConversationsQuery } from '../../queries/chat/chatQueries';
 import { useAuthStore } from '../../store/authStore';
+import { useUnreadNotificationCountQuery } from '~/queries/notification/notificationQueries';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 
@@ -22,7 +23,7 @@ export function HomeScreen({ navigation }: Props) {
   const { data: profile } = useMyProfileQuery();
   const { data: conversations } = useConversationsQuery();
 
-  const unreadCount = useMemo(() => {
+  const chatUnreadCount = useMemo(() => {
     if (!conversations || !currentUserId) return 0;
     return conversations.filter(c => {
       if (!c.lastMessage) return false;
@@ -31,6 +32,8 @@ export function HomeScreen({ navigation }: Props) {
       return new Date(c.lastMessage.createdAt) > new Date(c.lastReadAt);
     }).length;
   }, [conversations, currentUserId]);
+
+  const { data: notificationsUnreadCount = 0 } = useUnreadNotificationCountQuery();
 
   const {
     data,
@@ -75,10 +78,18 @@ export function HomeScreen({ navigation }: Props) {
             <Search size={24} color={theme.primary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('ChatList')} style={styles.iconBtn}>
-            <Bell size={24} color={theme.primary} />
-            {unreadCount > 0 && (
+            <MessageCircle size={24} color={theme.primary} />
+            {chatUnreadCount > 0 && (
               <View style={[styles.badge, { backgroundColor: theme.danger }]}>
-                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                <Text style={styles.badgeText}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.iconBtn}>
+            <Bell size={24} color={theme.primary} />
+            {notificationsUnreadCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: theme.danger }]}>
+                <Text style={styles.badgeText}>{notificationsUnreadCount > 99 ? '99+' : notificationsUnreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>

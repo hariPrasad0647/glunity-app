@@ -486,7 +486,9 @@ export function ChatRoomScreen({ route, navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
             <ChevronLeft size={24} color={theme.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>@{recipientUsername}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: recipientId })}>
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>@{recipientUsername}</Text>
+          </TouchableOpacity>
           <View style={{ width: 40 }} />
         </View>
 

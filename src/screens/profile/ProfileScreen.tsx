@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,7 +7,7 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { ChevronLeft, MoreHorizontal, Settings, Link2, Lock, Shield } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, Settings, Link2, Lock, Shield, X } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { PostCard } from '~/components/feed/PostCard';
 import { 
@@ -29,6 +29,7 @@ const { width } = Dimensions.get('window');
 export function ProfileScreen({ route, navigation }: Props) {
   const { theme } = useTheme();
   const currentUserId = useAuthStore(state => state.user?.id);
+  const [isBannerModalVisible, setIsBannerModalVisible] = React.useState(false);
   
   // If no userId is passed, or if it matches the current user's ID
   const userId = route.params?.userId;
@@ -98,18 +99,27 @@ export function ProfileScreen({ route, navigation }: Props) {
 
     return (
       <View style={styles.headerContainer}>
-        {profile.bannerVideo ? (
-          <VideoView 
-            player={player} 
-            style={styles.coverPhoto} 
-            nativeControls={false}
-            contentFit="cover"
-          />
-        ) : profile.bannerImage ? (
-          <Image source={{ uri: profile.bannerImage }} style={styles.coverPhoto} />
-        ) : (
-          <View style={[styles.coverPhoto, { backgroundColor: theme.surfaceSecondary }]} />
-        )}
+        <TouchableOpacity 
+          activeOpacity={0.9} 
+          onPress={() => {
+            if (profile.bannerVideo || profile.bannerImage) {
+              setIsBannerModalVisible(true);
+            }
+          }}
+        >
+          {profile.bannerVideo ? (
+            <VideoView 
+              player={player} 
+              style={styles.coverPhoto} 
+              nativeControls={false}
+              contentFit="cover"
+            />
+          ) : profile.bannerImage ? (
+            <Image source={{ uri: profile.bannerImage }} style={styles.coverPhoto} />
+          ) : (
+            <View style={[styles.coverPhoto, { backgroundColor: theme.surfaceSecondary }]} />
+          )}
+        </TouchableOpacity>
         
         <View style={styles.profileInfoContainer}>
           <View style={styles.topRow}>
@@ -281,6 +291,36 @@ export function ProfileScreen({ route, navigation }: Props) {
           ) : null
         }
       />
+
+      <Modal
+        visible={isBannerModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsBannerModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalCloseButton} 
+            onPress={() => setIsBannerModalVisible(false)}
+          >
+            <X size={28} color="#FFF" />
+          </TouchableOpacity>
+          {profile.bannerVideo ? (
+            <VideoView 
+              player={player} 
+              style={styles.modalMedia} 
+              nativeControls={true}
+              contentFit="contain"
+            />
+          ) : profile.bannerImage ? (
+            <Image 
+              source={{ uri: profile.bannerImage }} 
+              style={styles.modalMedia} 
+              resizeMode="contain"
+            />
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -429,5 +469,24 @@ const styles = StyleSheet.create({
   trustScoreTier: {
     fontSize: typography.sizes.sm,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+  },
+  modalMedia: {
+    width: '100%',
+    height: '100%',
   }
 });

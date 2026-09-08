@@ -24,6 +24,7 @@ import { UserActivityScreen } from '~/screens/profile/UserActivityScreen';
 import { AirdropPointsScreen } from '~/screens/points/AirdropPointsScreen';
 import { ReferralScreen } from '~/screens/referrals/ReferralScreen';
 import { TrustScoreScreen } from '~/screens/trustScore/TrustScoreScreen';
+import { NotificationsScreen } from '~/screens/notifications/NotificationsScreen';
 
 export type RootStackParamList = {
   Intro: undefined;
@@ -44,6 +45,7 @@ export type RootStackParamList = {
   AirdropPoints: undefined;
   Referrals: undefined;
   TrustScore: undefined;
+  Notifications: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -96,6 +98,7 @@ export function RootNavigator() {
             <Stack.Screen name="AirdropPoints" component={AirdropPointsScreen} />
             <Stack.Screen name="Referrals" component={ReferralScreen} />
             <Stack.Screen name="TrustScore" component={TrustScoreScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
           </Stack.Group>
         </>
       )}
