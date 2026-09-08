@@ -3,43 +3,33 @@ import { View, StyleSheet, Text, TextInput, KeyboardAvoidingView, Platform, Pres
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { Button } from '~/components/common/Button';
-import { PasswordInput } from '~/components/common/PasswordInput';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigation/AuthNavigator';
 import { ChevronLeft } from 'lucide-react-native';
-import { useLoginMutation } from '~/queries/auth/authQueries';
-import { useAuthStore } from '~/store/authStore';
+import { useForgotPasswordMutation } from '~/queries/auth/authQueries';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
-export function LoginScreen({ navigation }: Props) {
+export function ForgotPasswordScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   
-  const loginMutation = useLoginMutation();
-  const login = useAuthStore(state => state.login);
+  const forgotPasswordMutation = useForgotPasswordMutation();
 
   const handleContinue = async () => {
     if (!email || !email.includes('@')) {
       setError('Please enter a valid email address.');
       return;
     }
-    if (!password) {
-      setError('Please enter your password.');
-      return;
-    }
     setError('');
     
     try {
-      const data = await loginMutation.mutateAsync({ email: email.toLowerCase().trim(), password });
-      await login(data.user, data.accessToken, data.refreshToken);
+      await forgotPasswordMutation.mutateAsync({ email: email.toLowerCase().trim() });
+      navigation.navigate('ResetPassword', { email: email.toLowerCase().trim() });
     } catch (err: any) {
       if (err.response?.status === 404) {
         setError('No account found with this email.');
-      } else if (err.response?.status === 401) {
-        setError('Incorrect email or password.');
       } else if (err.response?.status === 429) {
         setError('Please wait and try again later.');
       } else {
@@ -62,9 +52,9 @@ export function LoginScreen({ navigation }: Props) {
 
         <View style={styles.content}>
           <View>
-            <Text style={[styles.title, { color: theme.textPrimary }]}>Welcome back</Text>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>Reset Password</Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Enter your email and we'll send you a verification code.
+              Enter your email and we'll send you a verification code to reset your password.
             </Text>
 
             <View style={styles.inputContainer}>
@@ -75,7 +65,7 @@ export function LoginScreen({ navigation }: Props) {
                   { 
                     backgroundColor: theme.surfaceSecondary,
                     color: theme.textPrimary,
-                    borderColor: error && !password ? theme.danger : theme.border
+                    borderColor: error ? theme.danger : theme.border
                   }
                 ]}
                 placeholder="you@example.com"
@@ -90,40 +80,16 @@ export function LoginScreen({ navigation }: Props) {
                 autoCorrect={false}
                 autoComplete="email"
               />
+              {error ? <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text> : null}
             </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Password</Text>
-              <PasswordInput
-                placeholder="Enter your password"
-                placeholderTextColor={theme.textSecondary}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  setError('');
-                }}
-                error={!!error}
-              />
-            </View>
-
-            {error ? <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text> : null}
-
-            <Pressable 
-              onPress={() => navigation.navigate('ForgotPassword')}
-              style={styles.forgotPasswordContainer}
-            >
-              <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>
-                Forgot Password?
-              </Text>
-            </Pressable>
           </View>
 
           <View style={styles.footer}>
             <Button 
-              title="Continue" 
+              title="Send Code" 
               onPress={handleContinue}
-              loading={loginMutation.isPending}
-              disabled={loginMutation.isPending || !email}
+              loading={forgotPasswordMutation.isPending}
+              disabled={forgotPasswordMutation.isPending || !email}
             />
           </View>
         </View>
@@ -183,15 +149,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     marginTop: 8,
-  },
-  forgotPasswordContainer: {
-    alignItems: 'flex-end',
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   footer: {
     width: '100%',

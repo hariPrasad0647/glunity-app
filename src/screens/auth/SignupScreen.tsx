@@ -3,11 +3,13 @@ import { View, StyleSheet, Text, TextInput, KeyboardAvoidingView, Platform, Pres
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { Button } from '~/components/common/Button';
+import { PasswordInput } from '~/components/common/PasswordInput';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigation/AuthNavigator';
 
 import { ChevronLeft } from 'lucide-react-native';
 import { useSignupMutation } from '~/queries/auth/authQueries';
+import { useAuthStore } from '~/store/authStore';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
@@ -19,6 +21,7 @@ export function SignupScreen({ navigation }: Props) {
     username: '',
     email: '',
     phone: '',
+    password: '',
     referralCode: '',
   });
 
@@ -35,28 +38,34 @@ export function SignupScreen({ navigation }: Props) {
   const [error, setError] = useState('');
   
   const signupMutation = useSignupMutation();
+  const login = useAuthStore(state => state.login);
 
   const handleContinue = async () => {
     // Basic client validation
-    if (!formData.fullName || !formData.username || !formData.email || !formData.phone) {
-      setError('Please fill in all fields.');
+    if (!formData.fullName || !formData.username || !formData.email || !formData.phone || !formData.password) {
+      setError('Please fill in all required fields.');
       return;
     }
     if (!formData.email.includes('@')) {
       setError('Please enter a valid email address.');
       return;
     }
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
     setError('');
     
     try {
-      await signupMutation.mutateAsync({ 
+      const data = await signupMutation.mutateAsync({ 
         fullName: formData.fullName.trim(),
         username: formData.username.trim(),
         email: formData.email.toLowerCase().trim(),
         phone: formData.phone.trim(),
+        password: formData.password,
         ...(formData.referralCode ? { referralCode: formData.referralCode.trim() } : {}),
       });
-      navigation.navigate('OtpVerification', { email: formData.email.toLowerCase().trim(), flow: 'signup' });
+      await login(data.user, data.accessToken, data.refreshToken);
     } catch (err: any) {
       if (err.response?.status === 409) {
         setError(err.response?.data?.message || 'An account with this email or username already exists.');
@@ -152,6 +161,19 @@ export function SignupScreen({ navigation }: Props) {
                   setError('');
                 }}
                 keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Password</Text>
+              <PasswordInput
+                placeholder="Create a password"
+                placeholderTextColor={theme.textSecondary}
+                value={formData.password}
+                onChangeText={(text) => {
+                  setFormData(prev => ({ ...prev, password: text }));
+                  setError('');
+                }}
               />
             </View>
 

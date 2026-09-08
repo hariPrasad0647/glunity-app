@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
-import { X, Image as ImageIcon } from 'lucide-react-native';
+import { X, Image as ImageIcon, Video as VideoIcon } from 'lucide-react-native';
 import { useCreatePostMutation } from '~/queries/post/postQueries';
 import { Button } from '~/components/common/Button';
 import { typography } from '~/theme/typography';
@@ -15,13 +15,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ComposePost'>;
 export function ComposePostScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const [content, setContent] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [media, setMedia] = useState<string[]>([]);
   
   const createPost = useCreatePostMutation();
 
   const handlePickImages = async () => {
-    if (images.length >= 10) {
-      Alert.alert('Limit Reached', 'You can only upload up to 10 images.');
+    if (media.length >= 10) {
+      Alert.alert('Limit Reached', 'You can only upload up to 10 media files.');
       return;
     }
     
@@ -32,26 +32,26 @@ export function ComposePostScreen({ navigation }: Props) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
-      selectionLimit: 10 - images.length,
+      selectionLimit: 10 - media.length,
       quality: 0.7,
     });
 
     if (!result.canceled && result.assets) {
       const newUris = result.assets.map(asset => asset.uri);
-      setImages(prev => [...prev, ...newUris].slice(0, 10));
+      setMedia(prev => [...prev, ...newUris].slice(0, 10));
     }
   };
 
   const removeImage = (indexToRemove: number) => {
-    setImages(prev => prev.filter((_, index) => index !== indexToRemove));
+    setMedia(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const handlePost = async () => {
-    if (!content.trim() && images.length === 0) return;
+    if (!content.trim() && media.length === 0) return;
     try {
-      await createPost.mutateAsync({ content, images });
+      await createPost.mutateAsync({ content, media });
       navigation.goBack();
     } catch (error: any) {
       console.error('Failed to create post:', error);
@@ -59,7 +59,7 @@ export function ComposePostScreen({ navigation }: Props) {
     }
   };
 
-  const isPostDisabled = (!content.trim() && images.length === 0) || createPost.isPending;
+  const isPostDisabled = (!content.trim() && media.length === 0) || createPost.isPending;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -93,19 +93,29 @@ export function ComposePostScreen({ navigation }: Props) {
             textAlignVertical="top"
           />
 
-          {images.length > 0 && (
+          {media.length > 0 && (
             <ScrollView horizontal style={styles.imageScroll} showsHorizontalScrollIndicator={false}>
-              {images.map((uri, index) => (
-                <View key={index} style={styles.imageContainer}>
-                  <Image source={{ uri }} style={styles.previewImage} />
-                  <TouchableOpacity 
-                    style={styles.removeImageBtn} 
-                    onPress={() => removeImage(index)}
-                  >
-                    <X size={16} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+              {media.map((uri, index) => {
+                const isVideo = uri.toLowerCase().match(/\.(mp4|mov|mkv|webm)$/);
+                return (
+                  <View key={index} style={styles.imageContainer}>
+                    {isVideo ? (
+                      <View style={[styles.previewImage, styles.videoPlaceholder, { backgroundColor: theme.surfaceSecondary }]}>
+                        <VideoIcon size={32} color={theme.textSecondary} />
+                        <Text style={[styles.videoText, { color: theme.textSecondary }]}>Video</Text>
+                      </View>
+                    ) : (
+                      <Image source={{ uri }} style={styles.previewImage} />
+                    )}
+                    <TouchableOpacity 
+                      style={styles.removeImageBtn} 
+                      onPress={() => removeImage(index)}
+                    >
+                      <X size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
             </ScrollView>
           )}
         </ScrollView>
@@ -182,5 +192,14 @@ const styles = StyleSheet.create({
   toolbarBtn: {
     padding: 8,
     marginRight: 16,
+  },
+  videoPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
   }
 });

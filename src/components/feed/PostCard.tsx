@@ -1,6 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, TouchableWithoutFeedback } from 'react-native';
 import { MessageCircle, Repeat2, Heart, Bookmark, MoreHorizontal, BadgeCheck, Trash2 } from 'lucide-react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withSequence, 
+  withDelay, 
+  withTiming 
+} from 'react-native-reanimated';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useTheme } from '~/hooks/useTheme';
 import { Post } from '~/types';
 import { typography } from '~/theme/typography';
@@ -11,6 +20,54 @@ import { ConfirmModal } from '~/components/common/ConfirmModal';
 import { OptionsModal, Option } from '~/components/common/OptionsModal';
 
 const { width } = Dimensions.get('window');
+
+// Create Animated version of Heart icon
+const AnimatedHeart = Animated.createAnimatedComponent(Heart);
+
+const VideoRenderer = ({ mediaUrl, theme, onPress, bigHeartAnimatedStyle }: any) => {
+  const player = useVideoPlayer(mediaUrl, player => {
+    player.loop = true;
+  });
+  
+  return (
+    <TouchableWithoutFeedback onPress={onPress}>
+      <View style={styles.mediaContainer}>
+        <VideoView 
+          style={[styles.mediaImage, { borderColor: theme.border }]} 
+          player={player} 
+          nativeControls 
+          contentFit="cover"
+        />
+        <Animated.View style={[styles.bigHeartContainer, bigHeartAnimatedStyle]} pointerEvents="none">
+          <Heart size={80} color="white" fill="white" />
+        </Animated.View>
+      </View>
+    </TouchableWithoutFeedback>
+  );
+};
+
+const PostMediaRenderer = ({ mediaUrl, theme, onPress, bigHeartAnimatedStyle }: any) => {
+  const isVideo = mediaUrl.toLowerCase().match(/\.(mp4|mov|mkv|webm)$/);
+  
+  if (isVideo) {
+    return <VideoRenderer mediaUrl={mediaUrl} theme={theme} onPress={onPress} bigHeartAnimatedStyle={bigHeartAnimatedStyle} />;
+  }
+  
+  return (
+    <TouchableWithoutFeedback onPress={onPress}>
+      <View style={styles.mediaContainer}>
+        <Image 
+          source={{ uri: mediaUrl }} 
+          style={[styles.mediaImage, { borderColor: theme.border }]} 
+          resizeMode="cover" 
+        />
+        <Animated.View style={[styles.bigHeartContainer, bigHeartAnimatedStyle]} pointerEvents="none">
+          <Heart size={80} color="white" fill="white" />
+        </Animated.View>
+      </View>
+    </TouchableWithoutFeedback>
+  );
+};
 
 interface PostCardProps {
   post: Post;
@@ -30,6 +87,12 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
 
   const [optionsVisible, setOptionsVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+
+  // Animations
+  const bigHeartScale = useSharedValue(0);
+  const bigHeartOpacity = useSharedValue(0);
+  const likeButtonScale = useSharedValue(1);
+  const lastTap = useRef(0);
 
   const postOptions: Option[] = [
     {
@@ -51,8 +114,77 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
     deletePostMutation.mutate(post.id);
   };
 
+  const triggerLikeAnimation = useCallback(() => {
+    likeButtonScale.value = withSequence(
+      withTiming(0.8, { duration: 50 }),
+      withSpring(1.3, { damping: 6, stiffness: 400 }),
+      withTiming(1, { duration: 50 })
+    );
+  }, [likeButtonScale]);
+
   const handleLike = () => {
+    triggerLikeAnimation();
     likeMutation.mutate();
+  };
+
+  const handleImageDoubleTap = () => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+    if (now - lastTap.current < DOUBLE_PRESS_DELAY) {
+      // Double tap detected
+      bigHeartScale.value = withSequence(
+        withTiming(0, { duration: 0 }),
+        withSpring(1, { damping: 12, stiffness: 250 }),
+        withDelay(300, withTiming(0, { duration: 150 }))
+      );
+      bigHeartOpacity.value = withSequence(
+        withTiming(1, { duration: 0 }),
+        withDelay(300, withTiming(0, { duration: 150 }))
+      );
+      
+      if (!post.hasLiked) {
+        handleLike();
+      }
+    } else {
+      // Single tap fallback just registers the time
+      lastTap.current = now;
+      if (onPress) {
+        // We use a small timeout to allow a second tap to cancel the single tap action if needed,
+        // but for simplicity, we can just trigger it immediately or ignore it and rely on the card press.
+        // It's better to NOT trigger onPress here, let the TouchableOpacity handle it, 
+        // but wait, TouchableWithoutFeedback intercepts the press.
+      }
+    }
+  };
+
+  const handleImagePress = () => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+    if (now - lastTap.current < DOUBLE_PRESS_DELAY) {
+      // Double tap
+      bigHeartScale.value = withSequence(
+        withTiming(0, { duration: 0 }),
+        withSpring(1, { damping: 12, stiffness: 250 }),
+        withDelay(300, withTiming(0, { duration: 150 }))
+      );
+      bigHeartOpacity.value = withSequence(
+        withTiming(1, { duration: 0 }),
+        withDelay(300, withTiming(0, { duration: 150 }))
+      );
+      
+      if (!post.hasLiked) {
+        handleLike();
+      }
+    } else {
+      lastTap.current = now;
+      // We trigger the parent onPress if they don't double tap.
+      // But we need to wait to see if it's a double tap.
+      setTimeout(() => {
+        if (Date.now() - lastTap.current >= DOUBLE_PRESS_DELAY && onPress) {
+          onPress();
+        }
+      }, DOUBLE_PRESS_DELAY);
+    }
   };
 
   const handleBookmark = () => {
@@ -71,6 +203,19 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
     if (hours < 24) return `${hours}h`;
     return `${Math.floor(hours / 24)}d`;
   };
+
+  const bigHeartAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: bigHeartScale.value }],
+      opacity: bigHeartOpacity.value,
+    };
+  });
+
+  const likeButtonAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: likeButtonScale.value }],
+    };
+  });
 
   return (
     <TouchableOpacity 
@@ -106,18 +251,19 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
         <Text style={[styles.text, { color: theme.textPrimary }]}>{post.content}</Text>
 
         {post.media && post.media.length > 0 && (
-          <View style={styles.mediaContainer}>
-            <Image 
-              source={{ uri: post.media[0] }} 
-              style={[styles.mediaImage, { borderColor: theme.border }]} 
-              resizeMode="cover" 
-            />
-          </View>
+          <PostMediaRenderer 
+            mediaUrl={post.media[0]} 
+            theme={theme} 
+            onPress={handleImagePress} 
+            bigHeartAnimatedStyle={bigHeartAnimatedStyle} 
+          />
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-            <Heart size={18} color={post.hasLiked ? theme.danger : theme.textSecondary} />
+          <TouchableOpacity style={styles.actionButton} onPress={handleLike} activeOpacity={0.7}>
+            <Animated.View style={likeButtonAnimatedStyle}>
+              <Heart size={18} color={post.hasLiked ? theme.danger : theme.textSecondary} fill={post.hasLiked ? theme.danger : 'transparent'} />
+            </Animated.View>
             <Text style={[styles.actionText, { color: post.hasLiked ? theme.danger : theme.textSecondary }]}>
               {post.likeCount > 0 ? post.likeCount : ''}
             </Text>
@@ -135,7 +281,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={handleBookmark}>
-            <Bookmark size={18} color={post.hasBookmarked ? theme.primary : theme.textSecondary} />
+            <Bookmark size={18} color={post.hasBookmarked ? theme.primary : theme.textSecondary} fill={post.hasBookmarked ? theme.primary : 'transparent'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -226,12 +372,28 @@ const styles = StyleSheet.create({
   mediaContainer: {
     marginTop: spacing.md,
     marginBottom: spacing.sm,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mediaImage: {
     width: '100%',
     height: 200,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  bigHeartContainer: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
   actions: {
     flexDirection: 'row',

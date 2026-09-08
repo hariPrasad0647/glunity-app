@@ -132,17 +132,25 @@ export const useCreatePostMutation = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ content, images }: { content: string, images?: string[] }) => {
+    mutationFn: async ({ content, media }: { content: string, media?: string[] }) => {
       const formData = new FormData();
       formData.append('content', content);
       
-      if (images && images.length > 0) {
-        images.forEach((uri, index) => {
-          const filename = uri.split('/').pop() || `image_${index}.jpg`;
-          const match = /\.(\w+)$/.exec(filename);
-          const type = match ? `image/${match[1]}` : `image/jpeg`;
+      if (media && media.length > 0) {
+        media.forEach((uri, index) => {
+          const filename = uri.split('/').pop() || `media_${index}.jpg`;
+          const ext = /\.(\w+)$/.exec(filename)?.[1]?.toLowerCase();
           
-          formData.append('images', {
+          let type = 'application/octet-stream';
+          if (ext) {
+            if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+              type = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+            } else if (['mp4', 'mov', 'mkv', 'webm'].includes(ext)) {
+              type = `video/${ext === 'mov' ? 'quicktime' : ext}`;
+            }
+          }
+          
+          formData.append('media', {
             uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
             name: filename,
             type,

@@ -7,39 +7,43 @@ import { PasswordInput } from '~/components/common/PasswordInput';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigation/AuthNavigator';
 import { ChevronLeft } from 'lucide-react-native';
-import { useLoginMutation } from '~/queries/auth/authQueries';
+import { useResetPasswordMutation } from '~/queries/auth/authQueries';
 import { useAuthStore } from '~/store/authStore';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 
-export function LoginScreen({ navigation }: Props) {
+export function ResetPasswordScreen({ navigation, route }: Props) {
   const { theme } = useTheme();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { email } = route.params;
+  
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
   
-  const loginMutation = useLoginMutation();
+  const resetPasswordMutation = useResetPasswordMutation();
   const login = useAuthStore(state => state.login);
 
   const handleContinue = async () => {
-    if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+    if (!code || code.length < 6) {
+      setError('Please enter the 6-digit verification code.');
       return;
     }
-    if (!password) {
-      setError('Please enter your password.');
+    if (!newPassword || newPassword.length < 8) {
+      setError('Password must be at least 8 characters long.');
       return;
     }
     setError('');
     
     try {
-      const data = await loginMutation.mutateAsync({ email: email.toLowerCase().trim(), password });
+      const data = await resetPasswordMutation.mutateAsync({ 
+        email, 
+        code, 
+        newPassword 
+      });
       await login(data.user, data.accessToken, data.refreshToken);
     } catch (err: any) {
-      if (err.response?.status === 404) {
-        setError('No account found with this email.');
-      } else if (err.response?.status === 401) {
-        setError('Incorrect email or password.');
+      if (err.response?.status === 400) {
+        setError('Invalid or expired verification code.');
       } else if (err.response?.status === 429) {
         setError('Please wait and try again later.');
       } else {
@@ -62,68 +66,56 @@ export function LoginScreen({ navigation }: Props) {
 
         <View style={styles.content}>
           <View>
-            <Text style={[styles.title, { color: theme.textPrimary }]}>Welcome back</Text>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>Create New Password</Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Enter your email and we'll send you a verification code.
+              Enter the 6-digit code sent to {email} and your new password.
             </Text>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Email</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Verification Code</Text>
               <TextInput
                 style={[
                   styles.input, 
                   { 
                     backgroundColor: theme.surfaceSecondary,
                     color: theme.textPrimary,
-                    borderColor: error && !password ? theme.danger : theme.border
+                    borderColor: error && !code ? theme.danger : theme.border
                   }
                 ]}
-                placeholder="you@example.com"
+                placeholder="000000"
                 placeholderTextColor={theme.textSecondary}
-                value={email}
+                value={code}
                 onChangeText={(text) => {
-                  setEmail(text);
+                  setCode(text.replace(/[^0-9]/g, '').slice(0, 6));
                   setError('');
                 }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
+                keyboardType="number-pad"
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Password</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>New Password</Text>
               <PasswordInput
-                placeholder="Enter your password"
+                placeholder="Enter new password"
                 placeholderTextColor={theme.textSecondary}
-                value={password}
+                value={newPassword}
                 onChangeText={(text) => {
-                  setPassword(text);
+                  setNewPassword(text);
                   setError('');
                 }}
-                error={!!error}
+                error={!!(error && code.length === 6)}
               />
             </View>
 
             {error ? <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text> : null}
-
-            <Pressable 
-              onPress={() => navigation.navigate('ForgotPassword')}
-              style={styles.forgotPasswordContainer}
-            >
-              <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>
-                Forgot Password?
-              </Text>
-            </Pressable>
           </View>
 
           <View style={styles.footer}>
             <Button 
-              title="Continue" 
+              title="Reset Password" 
               onPress={handleContinue}
-              loading={loginMutation.isPending}
-              disabled={loginMutation.isPending || !email}
+              loading={resetPasswordMutation.isPending}
+              disabled={resetPasswordMutation.isPending || !code || !newPassword}
             />
           </View>
         </View>
@@ -179,19 +171,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
+    letterSpacing: 4,
   },
   errorText: {
     fontSize: 14,
     marginTop: 8,
-  },
-  forgotPasswordContainer: {
-    alignItems: 'flex-end',
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   footer: {
     width: '100%',

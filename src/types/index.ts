@@ -63,3 +63,8 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface TokenReference {
+  symbol: string;
+  price: number;
+  priceChange24h: number;
+}
