@@ -7,12 +7,8 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-<<<<<<< Updated upstream
-import { ChevronLeft, MoreHorizontal, Settings, Users, Link2, Lock } from 'lucide-react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
-=======
 import { ChevronLeft, MoreHorizontal, Settings, Users, Link2, Lock, Shield } from 'lucide-react-native';
->>>>>>> Stashed changes
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { PostCard } from '~/components/feed/PostCard';
 import { 
   useMyProfileQuery, 

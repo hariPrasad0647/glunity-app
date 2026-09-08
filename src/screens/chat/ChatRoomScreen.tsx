@@ -6,13 +6,9 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-<<<<<<< Updated upstream
 import { ChevronLeft, Send, Image as ImageIcon, X, Reply, Trash2, CornerUpLeft } from 'lucide-react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { OptionsModal } from '~/components/common/OptionsModal';
-import { useChatMessagesQuery, ChatMessage, useDeleteMessageMutation, useConversationsQuery } from '~/queries/chat/chatQueries';
-=======
-import { ChevronLeft, Send, Image as ImageIcon, X } from 'lucide-react-native';
 import {
   useChatMessagesQuery,
   ChatMessage,
@@ -21,7 +17,6 @@ import {
   appendMessageToCache,
   removeTempMessageFromCache,
 } from '~/queries/chat/chatQueries';
->>>>>>> Stashed changes
 import { useAuthStore } from '~/store/authStore';
 import { useChatStore } from '~/store/chatStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -75,7 +70,9 @@ const MessageItem = memo(({ item, isOwn, theme, onAction, onReply, onScrollToMes
         style={[
           styles.messageBubble, 
           isOwn ? [styles.ownBubble, { backgroundColor: theme.primary }] : [styles.otherBubble, { backgroundColor: theme.surfaceSecondary }],
-          isHighlighted && { backgroundColor: theme.primary + '80' }
+          isHighlighted && { backgroundColor: theme.primary + '80' },
+          // Slight opacity for optimistic messages to give visual feedback
+          item._isOptimistic && { opacity: 0.7 },
         ]}
       >
         {item.replyTo && (
@@ -126,7 +123,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
   const [images, setImages] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
-<<<<<<< Updated upstream
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [optionsModalVisible, setOptionsModalVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
@@ -141,24 +137,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     }, 50);
   }, []);
   
-  const { socket, connect, isConnected } = useChatStore();
-  
-  const { data: conversations } = useConversationsQuery();
-  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(routeConversationId);
-
-  useEffect(() => {
-    if (!activeConversationId && conversations) {
-      const conv = conversations.find(c => c.otherUser?.id === recipientId);
-      if (conv?.conversationId) {
-        setActiveConversationId(conv.conversationId);
-      }
-    }
-  }, [conversations, activeConversationId, recipientId]);
-
-  const deleteMutation = useDeleteMessageMutation(activeConversationId || 'temp');
-  
-=======
-
   const { socket, connect, isConnected } = useChatStore();
 
   // Track pending optimistic message IDs so we can reconcile when the server
@@ -181,7 +159,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
 
   const deleteMutation = useDeleteMessageMutation(conversationId || 'temp');
 
->>>>>>> Stashed changes
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- Initialize Socket ---
@@ -189,16 +166,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     if (!socket) connect();
   }, [socket, connect]);
 
-<<<<<<< Updated upstream
-  // Fetch message history
-  const { 
-    data, 
-    isLoading, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage 
-  } = useChatMessagesQuery(activeConversationId || '');
-=======
   // --- Fetch message history ---
   const {
     data,
@@ -207,7 +174,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     hasNextPage,
     isFetchingNextPage
   } = useChatMessagesQuery(conversationId || '');
->>>>>>> Stashed changes
 
   const messages = useMemo(() => {
     if (!data) return [];
@@ -241,84 +207,12 @@ export function ChatRoomScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-<<<<<<< Updated upstream
-    const handleNewMessage = (payload: { conversationId: string, message: ChatMessage }) => {
-      const isForThisRoom = 
-        payload.conversationId === activeConversationId || 
-        (!activeConversationId && (payload.message.senderId === recipientId || payload.message.senderId === currentUserId));
-
-      if (isForThisRoom) {
-        if (!activeConversationId) {
-          setActiveConversationId(payload.conversationId);
-        }
-
-        // Append message to the cache
-        queryClient.setQueryData(['chatMessages', payload.conversationId], (oldData: any) => {
-          if (!oldData) {
-            return { pages: [[payload.message]], pageParams: [undefined] };
-          }
-          
-          // Prevent duplicates
-          const exists = oldData.pages.some((page: ChatMessage[]) => page.some(m => m.id === payload.message.id));
-          if (exists) return oldData;
-
-          let finalMessage = { ...payload.message };
-          const allMessages = oldData.pages.flatMap((p: ChatMessage[]) => p);
-          let optimisticTempId: string | null = null;
-          
-          console.log('[DEBUG] Received chat:message via WS:', JSON.stringify(finalMessage, null, 2));
-
-          // Salvage replyTo metadata from the optimistic temp message if the backend drops it
-          const optimisticMatch = allMessages.find((m: ChatMessage) => 
-            m.id.startsWith('temp_') && 
-            m.senderId === finalMessage.senderId &&
-            (!m.content || !finalMessage.content || m.content.trim() === finalMessage.content.trim())
-          );
-
-          if (optimisticMatch) {
-             console.log('[DEBUG] Found optimistic match:', optimisticMatch.id);
-             optimisticTempId = optimisticMatch.id;
-             if (optimisticMatch.replyToId) {
-               finalMessage.replyToId = optimisticMatch.replyToId;
-               finalMessage.replyTo = optimisticMatch.replyTo;
-             }
-          } else {
-             console.log('[DEBUG] No optimistic match found for:', finalMessage.id);
-          }
-          
-          if (finalMessage.replyToId && !finalMessage.replyTo) {
-             const quotedMsg = allMessages.find((m: ChatMessage) => m.id === finalMessage.replyToId);
-             if (quotedMsg) {
-                finalMessage.replyTo = {
-                  id: quotedMsg.id,
-                  content: quotedMsg.content,
-                  isDeleted: quotedMsg.isDeleted,
-                  sender: quotedMsg.sender || { id: quotedMsg.senderId, username: 'User', profileImage: null, fullName: '' },
-                  media: quotedMsg.media,
-                };
-             }
-          }
-
-          const newPages = oldData.pages.map((page: ChatMessage[]) => {
-             if (optimisticTempId) {
-                return page.map((m: ChatMessage) => m.id === optimisticTempId ? finalMessage : m);
-             }
-             return page;
-          });
-
-          if (!optimisticTempId) {
-             newPages[0] = [...newPages[0], finalMessage];
-          }
-
-          return { ...oldData, pages: newPages };
-        });
-=======
     const handleNewMessage = (payload: { conversationId: string; message: ChatMessage }) => {
       const activeConvId = conversationIdRef.current;
 
       if (
         payload.conversationId === activeConvId ||
-        (!activeConvId && payload.message.senderId === recipientId)
+        (!activeConvId && (payload.message.senderId === recipientId || payload.message.senderId === currentUserId))
       ) {
         // If we have a pending optimistic message from the same sender,
         // remove the temp message and append the real one.
@@ -331,10 +225,26 @@ export function ChatRoomScreen({ route, navigation }: Props) {
             removeTempMessageFromCache(queryClient, payload.conversationId, firstTempId);
           }
         }
->>>>>>> Stashed changes
+
+        // Salvage replyTo metadata from the optimistic temp message if the backend drops it
+        let finalMessage = { ...payload.message };
+        const allMessages = data?.pages.flatMap((p: ChatMessage[]) => p) || [];
+        
+        if (finalMessage.replyToId && !finalMessage.replyTo) {
+          const quotedMsg = allMessages.find((m: ChatMessage) => m.id === finalMessage.replyToId);
+          if (quotedMsg) {
+            finalMessage.replyTo = {
+              id: quotedMsg.id,
+              content: quotedMsg.content,
+              isDeleted: quotedMsg.isDeleted,
+              sender: quotedMsg.sender || { id: quotedMsg.senderId, username: 'User', profileImage: null, fullName: '' },
+              media: quotedMsg.media,
+            };
+          }
+        }
 
         // Append the real server message (the helper deduplicates by id)
-        appendMessageToCache(queryClient, payload.conversationId, payload.message);
+        appendMessageToCache(queryClient, payload.conversationId, finalMessage);
 
         // If we just discovered the conversationId for a new chat, update the
         // ref so subsequent messages use it.
@@ -368,8 +278,8 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     socket.on('chat:stop_typing', handleStopTyping);
 
     // If we just opened the room and have a conversationId, emit read
-    if (activeConversationId) {
-      socket.emit('chat:read', { conversationId: activeConversationId, senderId: recipientId });
+    if (conversationId) {
+      socket.emit('chat:read', { conversationId, senderId: recipientId });
     }
 
     return () => {
@@ -377,7 +287,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
       socket.off('chat:typing', handleTyping);
       socket.off('chat:stop_typing', handleStopTyping);
     };
-  }, [socket, isConnected, activeConversationId, recipientId, queryClient, currentUserId]);
+  }, [socket, isConnected, conversationId, recipientId, queryClient, currentUserId, data]);
 
   // --- Invalidate conversations list when leaving the chat room ---
   // This ensures the chat list shows updated read status and last message.
@@ -445,18 +355,11 @@ export function ChatRoomScreen({ route, navigation }: Props) {
 
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const messageContent = content.trim();
-<<<<<<< Updated upstream
-    
-    const targetConvId = activeConversationId || '';
-    
-    // Optimsitic UI
-=======
 
     // Optimistic UI
->>>>>>> Stashed changes
     const tempMessage: ChatMessage = {
       id: tempId,
-      conversationId: targetConvId,
+      conversationId: conversationId || '',
       senderId: currentUserId!,
       content: messageContent,
       messageType: 'text',
@@ -465,8 +368,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
       isDeleted: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-<<<<<<< Updated upstream
-      media: images.map(uri => ({ id: uri, mediaUrl: uri, mediaType: 'image', thumbnailUrl: null })),
+      media: images.map(uri => ({ id: uri, mediaUrl: uri, mediaType: 'image' as const, thumbnailUrl: null })),
       replyToId: replyingTo?.id || null,
       replyTo: replyingTo ? {
         id: replyingTo.id,
@@ -475,10 +377,7 @@ export function ChatRoomScreen({ route, navigation }: Props) {
         sender: replyingTo.sender || { id: replyingTo.senderId, username: replyingTo.senderId === currentUserId ? 'You' : recipientUsername, profileImage: null, fullName: '' },
         media: replyingTo.media,
       } : undefined,
-=======
-      media: images.map(uri => ({ id: uri, mediaUrl: uri, mediaType: 'image' as const, thumbnailUrl: null })),
       _isOptimistic: true,
->>>>>>> Stashed changes
     };
 
     setContent('');
@@ -487,25 +386,16 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     setReplyingTo(null);
     socket.emit('chat:stop_typing', { recipientId });
 
-<<<<<<< Updated upstream
-    queryClient.setQueryData(['chatMessages', targetConvId], (oldData: any) => {
-      if (!oldData) return { pages: [[tempMessage]], pageParams: [undefined] };
-      const newPages = [...oldData.pages];
-      newPages[0] = [...newPages[0], tempMessage];
-      return { ...oldData, pages: newPages };
-    });
-
-    setTimeout(() => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    }, 100);
-=======
     // Track the temp ID so we can reconcile when the server response arrives
     pendingTempIdsRef.current.add(tempId);
 
     if (conversationId) {
       appendMessageToCache(queryClient, conversationId, tempMessage);
     }
->>>>>>> Stashed changes
+
+    setTimeout(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }, 100);
 
     try {
       let uploadedMedia: any[] = [];
@@ -520,29 +410,16 @@ export function ChatRoomScreen({ route, navigation }: Props) {
         replyToId: currentReplyToId,
       });
 
-<<<<<<< Updated upstream
-=======
       // The server will respond with 'chat:message' via socket.
       // handleNewMessage will remove the temp message and insert the real one.
->>>>>>> Stashed changes
 
     } catch (err) {
       Alert.alert('Error', 'Failed to send message');
       // Revert optimistic update
-<<<<<<< Updated upstream
-      queryClient.setQueryData(['chatMessages', targetConvId], (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page: ChatMessage[]) => page.filter(m => m.id !== tempId))
-        };
-      });
-=======
       pendingTempIdsRef.current.delete(tempId);
       if (conversationId) {
         removeTempMessageFromCache(queryClient, conversationId, tempId);
       }
->>>>>>> Stashed changes
     }
   };
 
@@ -564,7 +441,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     }, 2000);
   };
 
-<<<<<<< Updated upstream
   const handleMessageAction = useCallback((msg: ChatMessage) => {
     if (msg.isDeleted) return;
     setSelectedMessage(msg);
@@ -580,26 +456,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
       setTimeout(() => {
         setHighlightedMessageId(null);
       }, 2000);
-=======
-  // --- Delete message ---
-  const confirmDelete = (msg: ChatMessage) => {
-    if (msg.senderId !== currentUserId || msg.isDeleted) return;
-    Alert.alert('Delete Message', 'Are you sure you want to delete this message?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(msg.id) }
-    ]);
-  };
-
-  // --- Render message bubble ---
-  const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
-    const isOwn = item.senderId === currentUserId;
-    if (item.isDeleted) {
-      return (
-        <View style={[styles.messageBubble, isOwn ? styles.ownBubble : styles.otherBubble, { backgroundColor: theme.surfaceSecondary }]}>
-          <Text style={[styles.messageText, { color: theme.textSecondary, fontStyle: 'italic' }]}>Message deleted</Text>
-        </View>
-      );
->>>>>>> Stashed changes
     }
   }, [messages]);
 
@@ -607,7 +463,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     const isOwn = item.senderId === currentUserId;
     const isHighlighted = item.id === highlightedMessageId;
     return (
-<<<<<<< Updated upstream
       <MessageItem 
         item={item} 
         isOwn={isOwn} 
@@ -625,41 +480,6 @@ export function ChatRoomScreen({ route, navigation }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-=======
-      <TouchableOpacity
-        onLongPress={() => confirmDelete(item)}
-        activeOpacity={isOwn ? 0.7 : 1}
-        style={[
-          styles.messageBubble,
-          isOwn ? [styles.ownBubble, { backgroundColor: theme.primary }] : [styles.otherBubble, { backgroundColor: theme.surfaceSecondary }],
-          // Slight opacity for optimistic messages to give visual feedback
-          item._isOptimistic && { opacity: 0.7 },
-        ]}
-      >
-        {item.media && item.media.length > 0 && (
-          <View style={styles.mediaContainer}>
-            {item.media.map(m => (
-              <Image key={m.id} source={{ uri: m.mediaUrl }} style={styles.messageImage} />
-            ))}
-          </View>
-        )}
-        {item.content ? (
-          <Text style={[styles.messageText, { color: isOwn ? '#fff' : theme.textPrimary }]}>
-            {item.content}
-          </Text>
-        ) : null}
-        <Text style={[styles.timestamp, { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
-          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </TouchableOpacity>
-    );
-  }, [currentUserId, theme]);
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
->>>>>>> Stashed changes
         style={styles.container}
       >
         <View style={[styles.header, { borderBottomColor: theme.border }]}>

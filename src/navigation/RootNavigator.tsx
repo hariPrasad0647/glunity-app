@@ -20,13 +20,10 @@ import { FollowRequestsScreen } from '~/screens/profile/FollowRequestsScreen';
 import { ChatListScreen } from '~/screens/chat/ChatListScreen';
 import { ChatRoomScreen } from '~/screens/chat/ChatRoomScreen';
 import { SettingsScreen } from '~/screens/profile/SettingsScreen';
-<<<<<<< Updated upstream
 import { UserActivityScreen } from '~/screens/profile/UserActivityScreen';
 import { AirdropPointsScreen } from '~/screens/points/AirdropPointsScreen';
 import { ReferralScreen } from '~/screens/referrals/ReferralScreen';
-=======
 import { TrustScoreScreen } from '~/screens/trustScore/TrustScoreScreen';
->>>>>>> Stashed changes
 
 export type RootStackParamList = {
   Intro: undefined;
@@ -43,13 +40,10 @@ export type RootStackParamList = {
   ChatList: undefined;
   ChatRoom: { conversationId?: string; recipientId?: string; recipientUsername?: string };
   Settings: undefined;
-<<<<<<< Updated upstream
   UserActivity: undefined;
   AirdropPoints: undefined;
   Referrals: undefined;
-=======
   TrustScore: undefined;
->>>>>>> Stashed changes
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -98,13 +92,10 @@ export function RootNavigator() {
             <Stack.Screen name="ChatList" component={ChatListScreen} />
             <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
-<<<<<<< Updated upstream
             <Stack.Screen name="UserActivity" component={UserActivityScreen} />
             <Stack.Screen name="AirdropPoints" component={AirdropPointsScreen} />
             <Stack.Screen name="Referrals" component={ReferralScreen} />
-=======
             <Stack.Screen name="TrustScore" component={TrustScoreScreen} />
->>>>>>> Stashed changes
           </Stack.Group>
         </>
       )}

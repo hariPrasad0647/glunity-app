@@ -28,7 +28,6 @@ export interface ChatMessage {
   updatedAt: string;
   sender?: ChatUser;
   media: ChatMedia[];
-<<<<<<< Updated upstream
   replyToId?: string | null;
   replyTo?: {
     id: string;
@@ -37,10 +36,8 @@ export interface ChatMessage {
     sender: ChatUser;
     media: ChatMedia[];
   };
-=======
   /** Client-only flag to identify optimistic messages */
   _isOptimistic?: boolean;
->>>>>>> Stashed changes
 }
 
 export interface Conversation {
