@@ -167,13 +167,15 @@ export function TrustScoreScreen({ navigation }: Props) {
       ? item.calculatedAt 
       : dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
+    const formattedScore = typeof item.finalScore === 'number' ? Math.round(item.finalScore).toString() : item.finalScore;
+
     return (
       <View style={[styles.historyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <View style={styles.historyLeft}>
-          <Text style={[styles.historyScore, { color: theme.textPrimary }]}>{item.finalScore}</Text>
-          <View>
+          <Text style={[styles.historyScore, { color: theme.textPrimary }]}>{formattedScore}</Text>
+          <View style={{ flex: 1 }}>
             <Text style={[styles.historyTier, { color: itemColor }]}>{item.tier.replace('_', ' ')}</Text>
-            <Text style={[styles.historyMeta, { color: theme.textSecondary }]}>
+            <Text style={[styles.historyMeta, { color: theme.textSecondary }]} numberOfLines={2}>
               {item.calculationReason} · {formattedDate}
             </Text>
           </View>
@@ -341,7 +343,7 @@ const styles = StyleSheet.create({
   componentScoreText: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.bold,
-    width: 48,
+    width: 60,
     textAlign: 'right',
   },
   historyCard: {
@@ -357,11 +359,13 @@ const styles = StyleSheet.create({
   historyLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   historyScore: {
     fontSize: 24,
     fontWeight: typography.weights.bold,
-    width: 48,
+    width: 60,
+    marginRight: 12,
   },
   historyTier: {
     fontSize: typography.sizes.md,

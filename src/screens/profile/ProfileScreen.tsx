@@ -7,7 +7,7 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { ChevronLeft, MoreHorizontal, Settings, Users, Link2, Lock, Shield } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, Settings, Link2, Lock, Shield } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { PostCard } from '~/components/feed/PostCard';
 import { 
@@ -240,14 +240,9 @@ export function ProfileScreen({ route, navigation }: Props) {
         <Text style={[styles.navTitle, { color: theme.textPrimary }]}>{profile.fullName}</Text>
         <View style={styles.headerActions}>
           {isOwnProfile ? (
-            <>
-              <TouchableOpacity onPress={() => navigation.navigate('FollowRequests')} style={styles.actionIcon}>
-                <Users size={20} color={theme.textPrimary} />
-              </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.actionIcon}>
                 <Settings size={20} color={theme.textPrimary} />
               </TouchableOpacity>
-            </>
           ) : (
             <TouchableOpacity style={styles.actionIcon}>
               <MoreHorizontal size={20} color={theme.textPrimary} />

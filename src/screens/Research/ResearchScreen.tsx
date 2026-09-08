@@ -31,17 +31,11 @@ export function ResearchScreen() {
           community sentiment and{'\n'}
           whale alerts all in one place.
         </Text>
-        
+
         <View style={[styles.separator, { backgroundColor: theme.primary }]} />
-        
+
         <Text style={[styles.phaseText, { color: theme.textSecondary }]}>
           Coming in phase 6, Q1 2027
-        </Text>
-      </View>
-      
-      <View style={styles.footer}>
-        <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-          Under research
         </Text>
       </View>
     </View>
