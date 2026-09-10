@@ -6,7 +6,7 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { ChevronLeft, Check, User, Heart, MessageSquare, Repeat, CornerUpLeft } from 'lucide-react-native';
+import { ChevronLeft, Check, User, Heart, MessageSquare, Repeat, CornerUpLeft, Bell } from 'lucide-react-native';
 import { Avatar } from '~/components/common/Avatar';
 import { 
   useNotificationsQuery, 
