@@ -16,6 +16,7 @@ import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 import { useLikeMutation, useBookmarkMutation, useRepostMutation, useDeletePostMutation } from '~/queries/post/postQueries';
 import { useAuthStore } from '~/store/authStore';
+import { useMediaStore } from '~/store/mediaStore';
 import { ConfirmModal } from '~/components/common/ConfirmModal';
 import { OptionsModal, Option } from '~/components/common/OptionsModal';
 
@@ -76,7 +77,7 @@ interface PostCardProps {
   onProfilePress?: () => void;
 }
 
-export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, onPress, onReply, onProfilePress }: PostCardProps) {
   const { theme } = useTheme();
 
   const likeMutation = useLikeMutation(post.id);
@@ -84,6 +85,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
   const repostMutation = useRepostMutation(post.id);
   const deletePostMutation = useDeletePostMutation();
   const currentUser = useAuthStore((state) => state.user);
+  const { openMedia } = useMediaStore();
 
   const [optionsVisible, setOptionsVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
@@ -104,7 +106,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
   ];
 
   const handleMoreOptions = () => {
-    if (currentUser?.id === post.author.id) {
+    if (currentUser?.id === post.author?.id) {
       setOptionsVisible(true);
     }
   };
@@ -179,8 +181,12 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
       // We trigger the parent onPress if they don't double tap.
       // But we need to wait to see if it's a double tap.
       setTimeout(() => {
-        if (Date.now() - lastTap.current >= DOUBLE_PRESS_DELAY && onPress) {
-          onPress();
+        if (Date.now() - lastTap.current >= DOUBLE_PRESS_DELAY) {
+          if (post.media && post.media.length > 0) {
+            openMedia(post.media[0], 'image', 'post');
+          } else if (onPress) {
+            onPress();
+          }
         }
       }, DOUBLE_PRESS_DELAY);
     }
@@ -222,8 +228,17 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <TouchableOpacity style={styles.avatarContainer} onPress={onProfilePress}>
-        {post.author.profileImage ? (
+      <TouchableOpacity 
+        style={styles.avatarContainer} 
+        onPress={() => {
+          if (post.author?.profileImage) {
+            openMedia(post.author.profileImage, 'image', 'avatar');
+          } else if (onProfilePress) {
+            onProfilePress();
+          }
+        }}
+      >
+        {post.author?.profileImage ? (
           <Image source={{ uri: post.author.profileImage }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatarPlaceholder, { backgroundColor: theme.surfaceSecondary }]} />
@@ -233,11 +248,11 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
         <View style={styles.header}>
           <TouchableOpacity style={styles.authorInfo} onPress={onProfilePress}>
             <View style={styles.nameRow}>
-              <Text style={[styles.displayName, { color: theme.textPrimary }]}>{post.author.fullName}</Text>
-              {post.author.isVerified && <BadgeCheck size={16} color={theme.primary} style={styles.verified} />}
+              <Text style={[styles.displayName, { color: theme.textPrimary }]}>{post.author?.fullName || 'Unknown'}</Text>
+              {post.author?.isVerified && <BadgeCheck size={16} color={theme.primary} style={styles.verified} />}
             </View>
             <View style={styles.handleRow}>
-              <Text style={[styles.username, { color: theme.textSecondary }]}>@{post.author.username}</Text>
+              <Text style={[styles.username, { color: theme.textSecondary }]}>@{post.author?.username || 'unknown'}</Text>
               <Text style={[styles.dot, { color: theme.textSecondary }]}> · </Text>
               <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(post.createdAt)}</Text>
             </View>
@@ -302,7 +317,7 @@ export function PostCard({ post, onPress, onReply, onProfilePress }: PostCardPro
       />
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

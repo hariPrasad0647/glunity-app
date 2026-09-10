@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootNavigator } from '~/navigation/RootNavigator';
 import { AppQueryProvider } from '~/api/QueryProvider';
 import { useTheme } from '~/hooks/useTheme';
+import { GlobalMediaViewer } from '~/components/common/GlobalMediaViewer';
 
 export default function App() {
   const { isDarkMode } = useTheme();
@@ -17,6 +18,7 @@ export default function App() {
           <NavigationContainer>
             <RootNavigator />
           </NavigationContainer>
+          <GlobalMediaViewer />
           <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         </AppQueryProvider>
       </SafeAreaProvider>

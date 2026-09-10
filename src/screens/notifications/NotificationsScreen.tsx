@@ -51,19 +51,16 @@ export function NotificationsScreen({ navigation }: Props) {
     if (notification.type === 'FOLLOW') {
       navigation.navigate('Profile', { userId: notification.actorId });
     } else if (['LIKE', 'REPOST', 'COMMENT', 'REPLY'].includes(notification.type)) {
-      // Depending on how your app expects entityId, this could be a postId or a reply.
-      // Usually comments/likes resolve to a post detail view.
-      if (notification.entityType === 'POST' || notification.entityType === 'REEL') {
-        navigation.navigate('PostDetail', { postId: notification.entityId });
+      // For POST/REEL entities, entityId is the postId itself
+      // For REPLY/COMMENT entities, use the dedicated postId field from backend
+      const postId = (notification.entityType === 'POST' || notification.entityType === 'REEL')
+        ? notification.entityId
+        : notification.postId;
+
+      if (postId) {
+        navigation.navigate('PostDetail', { postId });
       } else {
-        // If it's a comment/reply, we might still want to open the parent post,
-        // but for now, if you have a way to handle it, navigate accordingly.
-        // Assuming the backend provides the postId in entityId or you need to fetch it.
-        // As a fallback, we navigate to the user profile or just alert.
-        // To be safe, if entityType is POST, we navigate.
-        if (notification.entityType === 'POST') {
-          navigation.navigate('PostDetail', { postId: notification.entityId });
-        }
+        console.warn('Cannot navigate: postId not found in notification payload', notification);
       }
     }
   };
@@ -90,14 +87,14 @@ export function NotificationsScreen({ navigation }: Props) {
       onPress={() => handleNotificationPress(item)}
     >
       <View style={styles.avatarContainer}>
-        <Avatar uri={item.actor.profileImage} size={48} />
+        <Avatar uri={item.actor?.profileImage} size={48} />
         <View style={[styles.iconBadge, { backgroundColor: theme.background }]}>
           {getIconForType(item.type)}
         </View>
       </View>
       <View style={styles.contentContainer}>
         <Text style={[styles.message, { color: theme.textPrimary }]}>
-          <Text style={{ fontWeight: 'bold' }}>{item.actor.fullName}</Text> {item.message.replace(item.actor.fullName, '').trim()}
+          <Text style={{ fontWeight: 'bold' }}>{item.actor?.fullName || 'User'}</Text> {item.message.replace(item.actor?.fullName || '', '').trim()}
         </Text>
         <Text style={[styles.time, { color: theme.textSecondary }]}>
           {new Date(item.createdAt).toLocaleDateString()}
@@ -136,7 +133,7 @@ export function NotificationsScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={notifications}
-          keyExtractor={item => item.id}
+          keyExtractor={(item, index) => item.id ? `${item.id}-${index}` : index.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           refreshControl={

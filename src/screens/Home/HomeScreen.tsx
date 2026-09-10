@@ -129,13 +129,7 @@ export function HomeScreen({ navigation }: Props) {
           >
             <Text style={[styles.tabText, { color: theme.textSecondary }, activeTab === 'Trending' && { color: '#FFFFFF', fontWeight: 'bold' }]}>Trending</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('ChatList')}
-          >
-            <Text style={[styles.tabText, { color: theme.textSecondary }]}>Chat</Text>
-            <View style={[styles.blueDot, { backgroundColor: theme.primary }]} />
-          </TouchableOpacity>
+
         </ScrollView>
       </View>
 
@@ -150,7 +144,11 @@ export function HomeScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={posts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => item.id ? `${item.id}-${index}` : index.toString()}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          removeClippedSubviews={true}
           renderItem={({ item }) => (
             <PostCard
               post={item}

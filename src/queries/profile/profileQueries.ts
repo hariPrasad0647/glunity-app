@@ -41,6 +41,10 @@ export interface BasicUser {
   followStatus?: FollowStatus;
 }
 
+export interface SuggestionUser extends BasicUser {
+  mutualFriendsCount?: number;
+}
+
 // ==========================================
 // QUERIES
 // ==========================================
@@ -103,6 +107,16 @@ export const useFollowRequestsQuery = () => {
     queryFn: async () => {
       const { data } = await apiClient.get<{ data: { requests: BasicUser[] } }>('/api/users/follow-requests');
       return data.data.requests;
+    },
+  });
+};
+
+export const useFriendSuggestionsQuery = () => {
+  return useQuery({
+    queryKey: ['friendSuggestions'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: SuggestionUser[] }>('/api/users/suggestions');
+      return data.data;
     },
   });
 };

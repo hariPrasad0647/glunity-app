@@ -18,6 +18,7 @@ export interface Notification {
   message: string;
   entityId: string;
   entityType: 'USER' | 'POST' | 'REEL' | 'REPLY';
+  postId: string | null;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
