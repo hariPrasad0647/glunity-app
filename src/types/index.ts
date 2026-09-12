@@ -23,8 +23,11 @@ export interface Post {
   bookmarkCount: number;
   repostCount: number;
   commentCount: number;
+  viewCount?: number;
   hasLiked: boolean;
   hasBookmarked: boolean;
+  hasReposted: boolean;
+  hasCommented: boolean;
 }
 
 export interface Reply {
@@ -48,6 +51,8 @@ export interface Reel {
   bookmarkCount: number;
   hasLiked: boolean;
   hasBookmarked: boolean;
+  hasReposted: boolean;
+  hasCommented: boolean;
   createdAt: string;
 }
 

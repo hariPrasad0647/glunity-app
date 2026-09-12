@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
@@ -8,6 +8,7 @@ import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
 import { ChevronLeft, Check, User, Heart, MessageSquare, Repeat, CornerUpLeft, Bell } from 'lucide-react-native';
 import { Avatar } from '~/components/common/Avatar';
+import { NotificationSkeleton } from '~/components/common/Skeletons';
 import { 
   useNotificationsQuery, 
   useMarkNotificationReadMutation, 
@@ -119,9 +120,11 @@ export function NotificationsScreen({ navigation }: Props) {
       </View>
 
       {isLoading && !isRefetching ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {Array.from({ length: 6 }).map((_, index) => (
+            <NotificationSkeleton key={index} />
+          ))}
+        </ScrollView>
       ) : isError ? (
         <View style={styles.center}>
           <Text style={{ color: theme.danger }}>Failed to load notifications</Text>

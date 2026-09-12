@@ -25,6 +25,7 @@ import { getTierColor } from '~/theme/trustScoreTheme';
 import { TrustScoreRing } from '~/components/trustScore/TrustScoreRing';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { Button } from '~/components/common/Button';
+import { Skeleton } from '~/components/common/Skeleton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TrustScore'>;
 
@@ -86,8 +87,30 @@ export function TrustScoreScreen({ navigation }: Props) {
   const renderHeader = () => {
     if (isLoadingScore) {
       return (
-        <View style={styles.centerPadding}>
-          <ActivityIndicator size="large" color={theme.primary} />
+        <View style={styles.headerContainer}>
+          <View style={styles.ringContainer}>
+            <Skeleton width={200} height={200} circle />
+          </View>
+          <View style={styles.tierContainer}>
+            <Skeleton width={120} height={28} borderRadius={14} />
+          </View>
+          <View style={styles.monetizationContainer}>
+            <Skeleton width={180} height={28} borderRadius={14} />
+          </View>
+          <Skeleton width={160} height={16} borderRadius={8} style={{ alignSelf: 'center', marginBottom: spacing.xl }} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <Skeleton width={140} height={24} borderRadius={12} style={{ marginBottom: spacing.md }} />
+          <View style={styles.componentsList}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <View key={i} style={styles.componentItem}>
+                <View style={styles.componentHeader}>
+                  <Skeleton width={140} height={16} borderRadius={8} />
+                  <Skeleton width={30} height={14} borderRadius={7} />
+                </View>
+                <Skeleton width="100%" height={8} borderRadius={4} style={{ marginTop: 6 }} />
+              </View>
+            ))}
+          </View>
         </View>
       );
     }

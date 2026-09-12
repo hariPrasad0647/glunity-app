@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
@@ -9,6 +9,7 @@ import { spacing } from '~/theme/spacing';
 import { ChevronLeft } from 'lucide-react-native';
 import { useFollowersQuery, useFollowingQuery, BasicUser } from '~/queries/profile/profileQueries';
 import { Avatar } from '~/components/common/Avatar';
+import { UserListItemSkeleton } from '~/components/common/Skeletons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FollowList'>;
 
@@ -74,9 +75,11 @@ export function FollowListScreen({ route, navigation }: Props) {
       </View>
 
       {activeQuery.isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <UserListItemSkeleton key={index} />
+          ))}
+        </ScrollView>
       ) : activeQuery.isError ? (
         <View style={styles.center}>
           <Text style={{ color: theme.danger }}>Could not load users.</Text>

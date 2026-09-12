@@ -232,7 +232,12 @@ export const PostCard = React.memo(function PostCard({ post, onPress, onReply, o
         style={styles.avatarContainer} 
         onPress={() => {
           if (post.author?.profileImage) {
-            openMedia(post.author.profileImage, 'image', 'avatar');
+            openMedia(post.author.profileImage, 'image', 'avatar', { 
+              userId: post.author.id, 
+              username: post.author.username,
+              followStatus: post.author.followStatus || (post.author.isFollowing ? 'following' : 'none'),
+              isPrivate: post.author.isPrivate
+            });
           } else if (onProfilePress) {
             onProfilePress();
           }
@@ -289,8 +294,8 @@ export const PostCard = React.memo(function PostCard({ post, onPress, onReply, o
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={handleRepost}>
-            <Repeat2 size={18} color={theme.textSecondary} />
-            <Text style={[styles.actionText, { color: theme.textSecondary }]}>
+            <Repeat2 size={18} color={post.hasReposted ? theme.primary : theme.textSecondary} />
+            <Text style={[styles.actionText, { color: post.hasReposted ? theme.primary : theme.textSecondary }]}>
               {post.repostCount > 0 ? post.repostCount : ''}
             </Text>
           </TouchableOpacity>

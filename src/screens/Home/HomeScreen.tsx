@@ -2,10 +2,11 @@ import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Text, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PostCard } from '~/components/feed/PostCard';
+import { PostSkeleton } from '~/components/common/Skeletons';
 import { Avatar } from '~/components/common/Avatar';
 import { useTheme } from '~/hooks/useTheme';
 import { Plus, Search, MessageCircle, Bell } from 'lucide-react-native';
-import { useFeedQuery } from '~/queries/post/postQueries';
+import { useFeedQuery, useFollowingFeedQuery } from '~/queries/post/postQueries';
 import { useMyProfileQuery } from '~/queries/profile/profileQueries';
 import { useConversationsQuery } from '../../queries/chat/chatQueries';
 import { useAuthStore } from '../../store/authStore';
@@ -36,30 +37,53 @@ export function HomeScreen({ navigation }: Props) {
   const { data: notificationsUnreadCount = 0 } = useUnreadNotificationCountQuery();
 
   const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-    isRefetching,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage
+    data: feedData,
+    isLoading: feedLoading,
+    isError: feedError,
+    refetch: feedRefetch,
+    isRefetching: feedRefetching,
+    fetchNextPage: feedFetchNextPage,
+    hasNextPage: feedHasNextPage,
+    isFetchingNextPage: feedIsFetchingNextPage
   } = useFeedQuery();
 
-  const handleRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
+  const {
+    data: followingData,
+    isLoading: followingLoading,
+    isError: followingError,
+    refetch: followingRefetch,
+    isRefetching: followingRefetching,
+    fetchNextPage: followingFetchNextPage,
+    hasNextPage: followingHasNextPage,
+    isFetchingNextPage: followingIsFetchingNextPage
+  } = useFollowingFeedQuery();
 
-  const rawPosts = data?.pages.flatMap(page => page.data.feed || []) || [];
+  const isFeed = activeTab === 'Feed';
+  const isFollowing = activeTab === 'Following';
+  const isTrending = activeTab === 'Trending'; // Trending might be added later, for now we can fallback to empty array or feed
+
+  const isLoading = isFollowing ? followingLoading : feedLoading;
+  const isError = isFollowing ? followingError : feedError;
+  const isRefetching = isFollowing ? followingRefetching : feedRefetching;
+  const hasNextPage = isFollowing ? followingHasNextPage : feedHasNextPage;
+  const isFetchingNextPage = isFollowing ? followingIsFetchingNextPage : feedIsFetchingNextPage;
+
+  const handleRefresh = useCallback(() => {
+    if (isFollowing) followingRefetch();
+    else feedRefetch();
+  }, [isFollowing, followingRefetch, feedRefetch]);
+
+  const fetchNextPage = useCallback(() => {
+    if (isFollowing) followingFetchNextPage();
+    else feedFetchNextPage();
+  }, [isFollowing, followingFetchNextPage, feedFetchNextPage]);
+
   const posts = useMemo(() => {
-    let filtered = [...rawPosts];
-    if (activeTab === 'Following') {
-      // In a real app, this might be a backend query or filter by follow status. 
-      // For now, we'll just show the feed or keep it simple.
-      // filtered = filtered.filter(p => isFollowing(p.author.id));
+    if (isFollowing) {
+      return followingData?.pages.flatMap(page => page.data.feed || []) || [];
     }
-    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [rawPosts, activeTab]);
+    return feedData?.pages.flatMap(page => page.data.feed || []) || [];
+  }, [feedData, followingData, isFollowing]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -109,7 +133,7 @@ export function HomeScreen({ navigation }: Props) {
 
       {/* Category Tabs */}
       <View style={[styles.tabsContainer, { borderBottomColor: theme.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+        <View style={styles.tabsScroll}>
           <TouchableOpacity
             style={[styles.tab, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }, activeTab === 'Feed' && { backgroundColor: theme.primary, borderColor: theme.primary }]}
             onPress={() => setActiveTab('Feed')}
@@ -129,14 +153,15 @@ export function HomeScreen({ navigation }: Props) {
           >
             <Text style={[styles.tabText, { color: theme.textSecondary }, activeTab === 'Trending' && { color: '#FFFFFF', fontWeight: 'bold' }]}>Trending</Text>
           </TouchableOpacity>
-
-        </ScrollView>
+        </View>
       </View>
 
       {isLoading && !isRefetching ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <PostSkeleton key={index} />
+          ))}
+        </ScrollView>
       ) : isError ? (
         <View style={styles.center}>
           <Text style={{ color: theme.danger }}>Error loading feed. Pull to refresh.</Text>
@@ -222,15 +247,20 @@ const styles = StyleSheet.create({
   },
   tabsScroll: {
     paddingHorizontal: spacing.md,
-    gap: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
   },
   tab: {
+    flex: 1,
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
+    marginHorizontal: 4,
     gap: 6,
   },
   activeTab: {

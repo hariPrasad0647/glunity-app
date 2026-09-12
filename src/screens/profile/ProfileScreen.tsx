@@ -1,5 +1,13 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl, Dimensions, Modal } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl, Dimensions, Modal, LayoutAnimation, UIManager, Platform, ScrollView } from 'react-native';
+import Animated, { SlideInRight, SlideInLeft, FadeIn, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { FlingGestureHandler, Directions, State } from 'react-native-gesture-handler';
+
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,7 +15,7 @@ import { RootStackParamList } from '~/navigation/RootNavigator';
 import { useTheme } from '~/hooks/useTheme';
 import { typography } from '~/theme/typography';
 import { spacing } from '~/theme/spacing';
-import { ChevronLeft, MoreHorizontal, Settings, Link2, Lock, Shield, X, UserPlus } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, Settings, Link2, Lock, Shield, X, UserPlus, Grid, Repeat } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { PostCard } from '~/components/feed/PostCard';
 import { 
@@ -16,8 +24,9 @@ import {
   useFollowMutation, 
   useUnfollowMutation 
 } from '~/queries/profile/profileQueries';
-import { useUserPostsQuery } from '~/queries/post/postQueries';
+import { useUserPostsQuery, useUserRepostsQuery, usePostDetailQuery } from '~/queries/post/postQueries';
 import { Avatar } from '~/components/common/Avatar';
+import { ProfileHeaderSkeleton, PostSkeleton } from '~/components/common/Skeletons';
 import { Button } from '~/components/common/Button';
 import { useAuthStore } from '~/store/authStore';
 import { getTierColor } from '~/theme/trustScoreTheme';
@@ -26,10 +35,65 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 const { width } = Dimensions.get('window');
 
+const PostItem = React.memo(({ post, index, navigation, slideDirection }: any) => {
+  const entering = slideDirection === 'left' 
+    ? SlideInRight.duration(250)
+    : SlideInLeft.duration(250);
+    
+  return (
+    <Animated.View entering={entering}>
+      <PostCard 
+        post={post} 
+        onPress={() => navigation.navigate('PostDetail', { postId: post.id })}
+        onReply={() => navigation.navigate('PostDetail', { postId: post.id })}
+      />
+    </Animated.View>
+  );
+});
+
+const RepostItem = React.memo(({ post, index, navigation, slideDirection }: any) => {
+  const { data: fullPost } = usePostDetailQuery(post.id);
+  // Merge list data and detail data to prevent losing context (like hasReposted)
+  const displayPost = fullPost ? { ...post, ...fullPost, hasReposted: post.hasReposted } : post;
+
+  const entering = slideDirection === 'left' 
+    ? SlideInRight.duration(250)
+    : SlideInLeft.duration(250);
+
+  return (
+    <Animated.View entering={entering}>
+      <PostCard 
+        post={displayPost} 
+        onPress={() => navigation.navigate('PostDetail', { postId: displayPost.id })}
+        onReply={() => navigation.navigate('PostDetail', { postId: displayPost.id })}
+      />
+    </Animated.View>
+  );
+});
+
+
 export function ProfileScreen({ route, navigation }: Props) {
   const { theme } = useTheme();
   const currentUserId = useAuthStore(state => state.user?.id);
   const [isBannerModalVisible, setIsBannerModalVisible] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<'posts' | 'reposts'>('posts');
+  const [slideDirection, setSlideDirection] = React.useState<'left' | 'right'>('left');
+  
+  const tabIndicatorPosition = useSharedValue(0);
+
+  React.useEffect(() => {
+    tabIndicatorPosition.value = withSpring(activeTab === 'posts' ? 0 : width / 2, {
+      damping: 20,
+      stiffness: 200,
+      mass: 0.8,
+    });
+  }, [activeTab]);
+
+  const indicatorStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: tabIndicatorPosition.value }],
+    };
+  });
   
   // If no userId is passed, or if it matches the current user's ID
   const userId = route.params?.userId;
@@ -47,11 +111,21 @@ export function ProfileScreen({ route, navigation }: Props) {
   const targetId = isOwnProfile ? profile?.id : userId;
   const { 
     data: postsData, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage,
-    refetch: refetchPosts
+    fetchNextPage: fetchNextPostsPage, 
+    hasNextPage: hasNextPostsPage, 
+    isFetchingNextPage: isFetchingNextPostsPage,
+    refetch: refetchPosts,
+    isRefetching: isRefetchingPosts
   } = useUserPostsQuery(targetId || '');
+
+  const {
+    data: repostsData,
+    fetchNextPage: fetchNextRepostsPage,
+    hasNextPage: hasNextRepostsPage,
+    isFetchingNextPage: isFetchingNextRepostsPage,
+    refetch: refetchReposts,
+    isRefetching: isRefetchingReposts
+  } = useUserRepostsQuery(targetId || '');
 
   const followMutation = useFollowMutation(userId as string, profile?.isPrivate || false);
   const unfollowMutation = useUnfollowMutation(userId as string);
@@ -59,7 +133,8 @@ export function ProfileScreen({ route, navigation }: Props) {
   const handleRefresh = useCallback(() => {
     refetch();
     refetchPosts();
-  }, [refetch, refetchPosts]);
+    refetchReposts();
+  }, [refetch, refetchPosts, refetchReposts]);
 
   const player = useVideoPlayer(profile?.bannerVideo || '', (player) => {
     player.loop = true;
@@ -218,15 +293,59 @@ export function ProfileScreen({ route, navigation }: Props) {
             <Text style={[styles.privateDesc, { color: theme.textSecondary }]}>Follow this account to see their posts and reels.</Text>
           </View>
         )}
+
+        {canViewContent && (
+          <View style={[styles.tabContainer, { borderBottomColor: theme.border }]}>
+            <Animated.View 
+              style={[
+                styles.tabIndicator, 
+                { backgroundColor: theme.primary },
+                indicatorStyle
+              ]} 
+            />
+            <TouchableOpacity 
+              style={styles.tab}
+              onPress={() => {
+                if (activeTab !== 'posts') {
+                  setSlideDirection('right');
+                  setActiveTab('posts');
+                }
+              }}
+            >
+              <Grid size={24} color={activeTab === 'posts' ? theme.textPrimary : theme.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.tab}
+              onPress={() => {
+                if (activeTab !== 'reposts') {
+                  setSlideDirection('left');
+                  setActiveTab('reposts');
+                }
+              }}
+            >
+              <Repeat size={24} color={activeTab === 'reposts' ? theme.textPrimary : theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   };
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <View style={[styles.navBar, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+            <ChevronLeft size={24} color={theme.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <ProfileHeaderSkeleton />
+          {Array.from({ length: 2 }).map((_, index) => (
+            <PostSkeleton key={index} />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
@@ -239,7 +358,15 @@ export function ProfileScreen({ route, navigation }: Props) {
   }
 
   const posts = postsData?.pages.flatMap(page => page.data.posts) || [];
+  const reposts = repostsData?.pages.flatMap(page => page.data.posts) || [];
+  
   const canViewContent = isOwnProfile || !profile.isPrivate || profile.followStatus === 'following';
+
+  const activeData = activeTab === 'posts' ? posts : reposts;
+  const isFetchingNext = activeTab === 'posts' ? isFetchingNextPostsPage : isFetchingNextRepostsPage;
+  const hasNext = activeTab === 'posts' ? hasNextPostsPage : hasNextRepostsPage;
+  const fetchNext = activeTab === 'posts' ? fetchNextPostsPage : fetchNextRepostsPage;
+  const isRefetchingList = activeTab === 'posts' ? isRefetchingPosts : isRefetchingReposts;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
@@ -266,36 +393,56 @@ export function ProfileScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <FlatList
-        data={canViewContent ? posts : []}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={renderHeader}
-        renderItem={({ item }) => (
-          <PostCard 
-            post={item} 
-            onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
-            onReply={() => navigation.navigate('PostDetail', { postId: item.id })}
-          />
-        )}
-        refreshControl={
-          <RefreshControl
-            refreshing={query.isRefetching}
-            onRefresh={handleRefresh}
-            tintColor={theme.primary}
-          />
-        }
-        onEndReached={() => {
-          if (canViewContent && hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
+      <FlingGestureHandler
+        direction={Directions.LEFT}
+        onHandlerStateChange={({ nativeEvent }) => {
+          if (nativeEvent.state === State.ACTIVE && activeTab === 'posts') {
+            setSlideDirection('left');
+            setActiveTab('reposts');
           }
         }}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          isFetchingNextPage ? (
-            <ActivityIndicator style={{ margin: 16 }} color={theme.primary} />
-          ) : null
-        }
-      />
+      >
+        <FlingGestureHandler
+          direction={Directions.RIGHT}
+          onHandlerStateChange={({ nativeEvent }) => {
+            if (nativeEvent.state === State.ACTIVE && activeTab === 'reposts') {
+              setSlideDirection('right');
+              setActiveTab('posts');
+            }
+          }}
+        >
+          <FlatList
+            data={canViewContent ? activeData : []}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
+            ListHeaderComponent={renderHeader}
+            renderItem={({ item, index }) => (
+              activeTab === 'reposts' ? (
+                <RepostItem post={item} index={index} navigation={navigation} slideDirection={slideDirection} />
+              ) : (
+                <PostItem post={item} index={index} navigation={navigation} slideDirection={slideDirection} />
+              )
+            )}
+            refreshControl={
+              <RefreshControl
+                refreshing={query.isRefetching || isRefetchingList}
+                onRefresh={handleRefresh}
+                tintColor={theme.primary}
+              />
+            }
+            onEndReached={() => {
+              if (canViewContent && hasNext && !isFetchingNext) {
+                fetchNext();
+              }
+            }}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              isFetchingNext ? (
+                <ActivityIndicator style={{ margin: 16 }} color={theme.primary} />
+              ) : null
+            }
+          />
+        </FlingGestureHandler>
+      </FlingGestureHandler>
 
       <Modal
         visible={isBannerModalVisible}
@@ -368,7 +515,7 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     marginBottom: spacing.md,
   },
   avatar: {
@@ -387,7 +534,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    paddingBottom: 4,
+    marginTop: 44,
   },
   editButton: {
     height: 32,
@@ -473,6 +620,28 @@ const styles = StyleSheet.create({
   },
   trustScoreTier: {
     fontSize: typography.sizes.sm,
+    fontWeight: 'bold',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: -StyleSheet.hairlineWidth,
+    left: 0,
+    width: '50%',
+    height: 2,
+    zIndex: 1,
+  },
+  tabText: {
+    fontSize: typography.sizes.md,
     fontWeight: 'bold',
   },
   modalOverlay: {

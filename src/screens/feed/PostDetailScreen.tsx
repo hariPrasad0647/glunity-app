@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Text, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '~/hooks/useTheme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import { ChevronLeft, Send, X } from 'lucide-react-native';
 import { usePostDetailQuery, usePostRepliesQuery, useReplyMutation, useNestedReplyMutation } from '~/queries/post/postQueries';
 import { PostCard } from '~/components/feed/PostCard';
 import { ReplyCard } from '~/components/feed/ReplyCard';
+import { PostSkeleton, CommentSkeleton } from '~/components/common/Skeletons';
 import { typography } from '~/theme/typography';
 import { Reply } from '~/types';
 import { spacing } from '~/theme/spacing';
@@ -71,9 +72,21 @@ export function PostDetailScreen({ route, navigation }: Props) {
 
   if (isLoadingPost) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <ChevronLeft size={24} color={theme.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Post</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <PostSkeleton />
+          {Array.from({ length: 3 }).map((_, index) => (
+            <CommentSkeleton key={index} />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 

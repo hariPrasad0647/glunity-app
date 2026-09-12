@@ -58,6 +58,22 @@ export const useFeedQuery = () => {
   });
 };
 
+export const useFollowingFeedQuery = () => {
+  return useInfiniteQuery({
+    queryKey: ['followingFeed'],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiClient.get<FeedResponse>('/api/feed/following', {
+        params: { page: pageParam, limit: 10 },
+      });
+      return data;
+    },
+    getNextPageParam: (lastPage) => {
+      return lastPage.data.hasMore ? lastPage.data.page + 1 : undefined;
+    },
+  });
+};
+
 export const useUserPostsQuery = (userId: string) => {
   return useInfiniteQuery({
     queryKey: ['userPosts', userId],
@@ -72,6 +88,28 @@ export const useUserPostsQuery = (userId: string) => {
     getNextPageParam: (lastPage) => {
       const maxPages = Math.ceil(lastPage.data.total / lastPage.data.limit);
       return lastPage.data.page < maxPages ? lastPage.data.page + 1 : undefined;
+    },
+  });
+};
+
+export const useUserRepostsQuery = (userId: string) => {
+  return useInfiniteQuery({
+    queryKey: ['userReposts', userId],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const endpoint = userId === 'me' ? '/api/users/me/reposted/posts' : `/api/users/${userId}/reposted/posts`;
+      const { data } = await apiClient.get<{ data: { posts: Post[]; total?: number; page?: number; limit?: number } }>(
+        endpoint,
+        { params: { page: pageParam, limit: 12 } }
+      );
+      return data;
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.data.total && lastPage.data.limit && lastPage.data.page) {
+        const maxPages = Math.ceil(lastPage.data.total / lastPage.data.limit);
+        return lastPage.data.page < maxPages ? lastPage.data.page + 1 : undefined;
+      }
+      return lastPage.data.posts.length === 12 ? allPages.length + 1 : undefined;
     },
   });
 };
@@ -124,6 +162,7 @@ export const useDeletePostMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['feed'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
       queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['userReposts'] });
     },
   });
 };
@@ -178,6 +217,7 @@ export const useCreatePostMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['feed'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
       queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['userReposts'] });
     },
   });
 };
@@ -195,6 +235,7 @@ export const useReplyMutation = (postId: string) => {
       queryClient.invalidateQueries({ queryKey: ['post', postId] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
       queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['userReposts'] });
       
       const updater = (post: Post) => {
         const currentCount = post.commentCount !== undefined ? post.commentCount : (post as any).replyCount || 0;
@@ -213,22 +254,33 @@ export const useReplyMutation = (postId: string) => {
 // OPTIMISTIC INTERACTIONS
 // ==========================================
 
-// Helper to optimistically update a post within the feed cache
+// Helper to optimistically update a post within the feed cache and profile caches
 const updatePostInFeedCache = (queryClient: any, postId: string, updater: (post: Post) => Post) => {
-  queryClient.setQueryData(['feed'], (oldData: any) => {
-    if (!oldData) return oldData;
-    return {
-      ...oldData,
-      pages: oldData.pages.map((page: any) => ({
-        ...page,
-        data: {
-          ...page.data,
-          feed: page.data.feed ? page.data.feed.map((item: Post) => 
-            item.id === postId ? updater(item) : item
-          ) : [],
-        }
-      })),
-    };
+  const queryKeys = [['feed'], ['userPosts'], ['myPosts'], ['userReposts']];
+  
+  queryKeys.forEach(key => {
+    queryClient.setQueriesData({ queryKey: key }, (oldData: any) => {
+      if (!oldData || !oldData.pages) return oldData;
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page: any) => ({
+          ...page,
+          data: {
+            ...page.data,
+            ...(page.data.feed ? {
+              feed: page.data.feed.map((item: Post) => 
+                item.id === postId ? updater(item) : item
+              )
+            } : {}),
+            ...(page.data.posts ? {
+              posts: page.data.posts.map((item: Post) => 
+                item.id === postId ? updater(item) : item
+              )
+            } : {}),
+          }
+        })),
+      };
+    });
   });
 };
 
@@ -315,26 +367,42 @@ export const useRepostMutation = (postId: string) => {
 
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post<{ data: { repostCount: number } }>(`/api/posts/${postId}/repost`);
+      const { data } = await apiClient.post<{ data: { reposted: boolean; repostCount: number } }>(`/api/posts/${postId}/repost`);
       return data.data;
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['feed'] });
+      await queryClient.cancelQueries({ queryKey: ['post', postId] });
       
       const updater = (post: Post) => ({
         ...post,
-        // Since backend has no "un-repost", we just optimistically bump if we haven't tracked it locally
-        repostCount: post.repostCount + 1, 
+        hasReposted: !post.hasReposted,
+        repostCount: post.hasReposted ? Math.max(0, post.repostCount - 1) : post.repostCount + 1, 
       });
 
       updatePostInFeedCache(queryClient, postId, updater);
+      
+      const previousPost = queryClient.getQueryData(['post', postId]);
+      if (previousPost) {
+        queryClient.setQueryData(['post', postId], updater(previousPost as Post));
+      }
+
+      return { previousPost };
     },
     onSuccess: (result) => {
       const updater = (post: Post) => ({
         ...post,
+        hasReposted: result.reposted,
         repostCount: result.repostCount,
       });
       updatePostInFeedCache(queryClient, postId, updater);
+      queryClient.setQueryData(['post', postId], (old: any) => old ? updater(old) : old);
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousPost) {
+        queryClient.setQueryData(['post', postId], context.previousPost);
+      }
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
     },
   });
 };
@@ -378,6 +446,7 @@ export const useDeleteReplyMutation = (postId: string) => {
       queryClient.invalidateQueries({ queryKey: ['post', postId] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
       queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['userReposts'] });
       
       const updater = (post: Post) => {
         const currentCount = post.commentCount !== undefined ? post.commentCount : (post as any).replyCount || 0;

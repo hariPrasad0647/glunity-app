@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, SectionList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SectionList, TouchableOpacity, ActivityIndicator, TextInput, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
@@ -9,6 +9,7 @@ import { spacing } from '~/theme/spacing';
 import { ChevronLeft, Search } from 'lucide-react-native';
 import { useConversationsQuery, useChatSearchQuery, Conversation, ChatUser } from '~/queries/chat/chatQueries';
 import { Avatar } from '~/components/common/Avatar';
+import { ChatListItemSkeleton } from '~/components/common/Skeletons';
 import { useAuthStore } from '~/store/authStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatList'>;
@@ -137,7 +138,11 @@ export function ChatListScreen({ navigation }: Props) {
 
       {debouncedQuery ? (
         isSearching ? (
-          <ActivityIndicator style={styles.loader} color={theme.primary} />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <ChatListItemSkeleton key={index} />
+            ))}
+          </ScrollView>
         ) : searchSections.length > 0 ? (
           <SectionList
             sections={searchSections}
@@ -155,7 +160,11 @@ export function ChatListScreen({ navigation }: Props) {
         )
       ) : (
         isLoadingConversations ? (
-          <ActivityIndicator style={styles.loader} color={theme.primary} />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {Array.from({ length: 8 }).map((_, index) => (
+              <ChatListItemSkeleton key={index} />
+            ))}
+          </ScrollView>
         ) : (
           <FlatList
             data={conversations}

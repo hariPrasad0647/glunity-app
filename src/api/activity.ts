@@ -20,3 +20,8 @@ export const getSavedPosts = async (page: number, limit: number = 12): Promise<P
   const { data } = await apiClient.get(`/api/users/saved/posts?page=${page}&limit=${limit}`);
   return data;
 };
+
+export const getSavedReels = async (page: number, limit: number = 12): Promise<PaginatedResponse<Reel>> => {
+  const { data } = await apiClient.get(`/api/users/saved/reels?page=${page}&limit=${limit}`);
+  return data;
+};

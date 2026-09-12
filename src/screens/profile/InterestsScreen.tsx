@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ScrollView, ActivityIndicator, Alert, SafeAreaView as RNSafeAreaView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
@@ -9,6 +9,7 @@ import { spacing } from '~/theme/spacing';
 import { ChevronLeft } from 'lucide-react-native';
 import { useGetInterestsQuery, useSaveInterestsMutation } from '~/queries/profile/profileQueries';
 import { Button } from '~/components/common/Button';
+import { Skeleton } from '~/components/common/Skeleton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Interests'>;
 
@@ -57,9 +58,23 @@ export function InterestsScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+            <ChevronLeft size={24} color={theme.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Your Interests</Text>
+          <View style={styles.placeholderBtn} />
+        </View>
+        <View style={styles.scrollContainer}>
+          <Skeleton width="100%" height={40} borderRadius={8} style={{ marginBottom: 24 }} />
+          <View style={styles.chipsContainer}>
+            {[80, 100, 70, 120, 90, 80, 110, 70, 90, 100, 80, 110, 70, 90, 100].map((width, i) => (
+              <Skeleton key={i} width={width} height={40} borderRadius={20} />
+            ))}
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 

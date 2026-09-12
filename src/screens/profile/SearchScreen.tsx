@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
@@ -9,6 +9,7 @@ import { spacing } from '~/theme/spacing';
 import { Search, ChevronLeft } from 'lucide-react-native';
 import { useUserSearchQuery, BasicUser } from '~/queries/profile/profileQueries';
 import { Avatar } from '~/components/common/Avatar';
+import { UserListItemSkeleton } from '~/components/common/Skeletons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Search'>;
 
@@ -64,9 +65,11 @@ export function SearchScreen({ navigation }: Props) {
       </View>
 
       {isLoading && debouncedQuery.length > 0 ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <UserListItemSkeleton key={index} />
+          ))}
+        </ScrollView>
       ) : isError ? (
         <View style={styles.center}>
           <Text style={{ color: theme.danger }}>Error searching users.</Text>

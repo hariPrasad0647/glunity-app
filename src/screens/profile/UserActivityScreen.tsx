@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,6 +15,7 @@ import {
 import { PostCard } from '~/components/feed/PostCard';
 import { ReplyCard } from '~/components/feed/ReplyCard';
 import { Avatar } from '~/components/common/Avatar';
+import { PostSkeleton, CommentSkeleton } from '~/components/common/Skeletons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'UserActivity'>;
 type TabType = 'Likes' | 'Comments' | 'Saved';
@@ -166,9 +167,11 @@ export function UserActivityScreen({ navigation }: Props) {
 
     if (isLoading) {
       return (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {Array.from({ length: 3 }).map((_, index) => (
+            activeTab === 'Comments' ? <CommentSkeleton key={index} /> : <PostSkeleton key={index} />
+          ))}
+        </ScrollView>
       );
     }
 

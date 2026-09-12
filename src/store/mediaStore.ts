@@ -5,7 +5,8 @@ interface MediaState {
   mediaUrl: string | null;
   mediaType: 'image' | 'video';
   variant: 'avatar' | 'post';
-  openMedia: (url: string, type?: 'image' | 'video', variant?: 'avatar' | 'post') => void;
+  metadata?: any;
+  openMedia: (url: string, type?: 'image' | 'video', variant?: 'avatar' | 'post', metadata?: any) => void;
   closeMedia: () => void;
 }
 
@@ -14,13 +15,14 @@ export const useMediaStore = create<MediaState>((set) => ({
   mediaUrl: null,
   mediaType: 'image',
   variant: 'post',
-  openMedia: (url, type = 'image', variant = 'post') => {
+  metadata: undefined,
+  openMedia: (url, type = 'image', variant = 'post', metadata) => {
     // Basic auto-detection if type not provided
     let finalType = type;
     if (url.toLowerCase().match(/\.(mp4|mov|mkv|webm)$/)) {
       finalType = 'video';
     }
-    set({ isVisible: true, mediaUrl: url, mediaType: finalType, variant });
+    set({ isVisible: true, mediaUrl: url, mediaType: finalType, variant, metadata });
   },
-  closeMedia: () => set({ isVisible: false, mediaUrl: null, variant: 'post' }),
+  closeMedia: () => set({ isVisible: false, mediaUrl: null, variant: 'post', metadata: undefined }),
 }));

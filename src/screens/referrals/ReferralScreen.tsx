@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '~/hooks/useTheme';
 import { useMyReferral, useReferralHistory } from '~/queries/referrals/referralQueries';
+import { Skeleton } from '~/components/common/Skeleton';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigation/RootNavigator';
 
@@ -42,9 +43,40 @@ export function ReferralScreen({ navigation }: Props) {
 
   if (statsLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <View style={[styles.navBar, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+            <ChevronLeft size={24} color={theme.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.navTitle, { color: theme.textPrimary }]}>Refer & Earn</Text>
+          <View style={styles.iconBtn} />
+        </View>
+        <ScrollView style={styles.container}>
+          <View style={styles.section}>
+            <Skeleton width={140} height={24} borderRadius={8} style={{ marginBottom: 12 }} />
+            <Skeleton width={120} height={16} borderRadius={8} style={{ marginBottom: 8 }} />
+            <View style={styles.row}>
+              <Skeleton width={160} height={32} borderRadius={8} />
+              <Skeleton width={80} height={40} borderRadius={8} />
+            </View>
+            <Skeleton width={120} height={16} borderRadius={8} style={{ marginTop: 16, marginBottom: 8 }} />
+            <Skeleton width="100%" height={24} borderRadius={8} style={{ marginBottom: 12 }} />
+            <View style={styles.row}>
+              <Skeleton width="48%" height={48} borderRadius={8} />
+              <Skeleton width="48%" height={48} borderRadius={8} />
+            </View>
+          </View>
+          <View style={styles.section}>
+            <Skeleton width={160} height={24} borderRadius={8} style={{ marginBottom: 12 }} />
+            <View style={[styles.statsGrid, { backgroundColor: theme.surface }]}>
+               <Skeleton width="45%" height={60} borderRadius={8} style={{ margin: '2.5%' }} />
+               <Skeleton width="45%" height={60} borderRadius={8} style={{ margin: '2.5%' }} />
+               <Skeleton width="45%" height={60} borderRadius={8} style={{ margin: '2.5%' }} />
+               <Skeleton width="45%" height={60} borderRadius={8} style={{ margin: '2.5%' }} />
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 

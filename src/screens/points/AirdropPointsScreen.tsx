@@ -35,6 +35,7 @@ import {
   PointTransaction,
 } from "~/queries/points/pointsQueries";
 import { AnimatedNumber } from "~/components/AnimatedNumber";
+import { Skeleton } from "~/components/common/Skeleton";
 
 type Props = NativeStackScreenProps<RootStackParamList, "AirdropPoints">;
 
@@ -202,9 +203,33 @@ export function AirdropPointsScreen({ navigation }: Props) {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.headerContent}>
+            <View style={[styles.summaryCard, { backgroundColor: theme.surfaceSecondary }]}>
+              <Skeleton width={80} height={80} circle style={{ marginBottom: spacing.sm }} />
+              <Skeleton width={150} height={16} borderRadius={8} style={{ marginBottom: spacing.xs }} />
+              <Skeleton width={120} height={48} borderRadius={12} style={{ marginBottom: spacing.md }} />
+              <View style={styles.monthlySummary}>
+                <Skeleton width={80} height={16} borderRadius={8} style={{ marginRight: spacing.xs }} />
+                <Skeleton width={60} height={16} borderRadius={8} />
+              </View>
+            </View>
+            <View style={[styles.tabContainer, { borderBottomColor: theme.border, justifyContent: 'space-around' }]}>
+              <Skeleton width={100} height={20} borderRadius={10} style={{ marginVertical: spacing.md }} />
+              <Skeleton width={100} height={20} borderRadius={10} style={{ marginVertical: spacing.md }} />
+            </View>
+          </View>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <View key={index} style={[styles.transactionItem, { borderBottomColor: theme.border }]}>
+              <Skeleton width={48} height={48} circle style={{ marginRight: spacing.md }} />
+              <View style={styles.transactionInfo}>
+                <Skeleton width={120} height={16} borderRadius={8} style={{ marginBottom: 4 }} />
+                <Skeleton width={80} height={14} borderRadius={7} />
+              </View>
+              <Skeleton width={40} height={20} borderRadius={10} />
+            </View>
+          ))}
+        </ScrollView>
       ) : (
         <FlatList
           data={activeTab === "history" ? transactions : monthly}
